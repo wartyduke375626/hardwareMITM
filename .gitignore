@@ -1,0 +1,8 @@
+# Compiled verilog files
+verilog/build/
+
+# Generated simulation files (.vcd)
+verilog/sim/
+
+# Web files
+web/
