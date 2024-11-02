@@ -36,23 +36,21 @@ module MitmControl #(
 	wire					ss_fall_edge_sig;
 	
 	wire	[DATA_SIZE-1:0]	miso_read_data;
-	wire					miso_read_busy;
-	wire					miso_read_data_ready;
+	wire					miso_read_done;
 	
 	wire	[DATA_SIZE-1:0]	mosi_read_data;
-	wire					mosi_read_busy;
-	wire					mosi_read_data_ready;
+	wire					mosi_read_done;
 	
 	wire	[DATA_SIZE-1:0]	fake_miso_data;
 	wire	[DATA_SIZE-1:0]	fake_mosi_data;
 	wire					fake_miso_select;
 	wire					fake_mosi_select;
-	wire					fake_data_valid;
+	wire					mitm_logic_done;
 	
-	wire					miso_write_busy;
+	wire					miso_write_done;
 	wire					fake_miso_out;
 	
-	wire					mosi_write_busy;
+	wire					mosi_write_done;
 	wire					fake_mosi_out;
 	
 	// internal registers
@@ -69,15 +67,18 @@ module MitmControl #(
 	reg		fake_ss_out = 1'b0;
 	reg		fake_ss_select = 1'b0;
 	
-	reg	[2:0]	state = STATE_RESET;
+	reg	[3:0]	state = STATE_RESET;
 	
 	// states
-	localparam	STATE_IDLE	= 3'd0;
-	localparam	STATE_READ	= 3'd1;
-	localparam	STATE_MITM	= 3'd2;
-	localparam	STATE_WRITE	= 3'd3;
-	localparam	STATE_DONE	= 3'd4;
-	localparam	STATE_RESET	= 3'd5;
+	localparam	STATE_IDLE			= 3'd0;
+	localparam	STATE_READ_START	= 3'd1;
+	localparam	STATE_READ			= 3'd2;
+	localparam	STATE_MITM_START	= 3'd3;
+	localparam	STATE_MITM			= 3'd4;
+	localparam	STATE_WRITE_START	= 3'd5;
+	localparam	STATE_WRITE			= 3'd6;
+	localparam	STATE_DONE			= 3'd7;
+	localparam	STATE_RESET			= 3'd8;
 	
 	// control logic
 	always @ (posedge sys_clk or posedge rst)
@@ -96,35 +97,50 @@ module MitmControl #(
 					if (ss_rise_edge_sig == 1'b1) begin
 						miso_read_start <= 1'b1;
 						mosi_read_start <= 1'b1;
-						state <= STATE_READ;
+						state <= STATE_READ_START;
 					end
+				end
+				
+				// delay one clock cycle for reading to start
+				STATE_READ_START: begin
+					state <= STATE_READ;
 				end
 				
 				// data reading state -- wait for data to be read and signal mitm evaluation
 				STATE_READ: begin
 					miso_read_start <= 1'b0;
 					mosi_read_start <= 1'b0;
-					if (miso_read_data_ready & mosi_read_data_ready == 1'b1) begin
+					if (miso_read_done & mosi_read_done == 1'b1) begin
 						mitm_eval <= 1'b1;
-						state <= STATE_MITM;
+						state <= STATE_MITM_START;
 					end
+				end
+				
+				// delay one clock cycle for mitm logic to start evaluating
+				STATE_MITM_START: begin
+					state <= STATE_MITM;
 				end
 				
 				// MITM logic state -- wait for MITM logic to process inputs and signal write start
 				STATE_MITM: begin
 					mitm_eval <= 1'b0;
-					if (fake_data_valid == 1'b1) begin
+					if (mitm_logic_done == 1'b1) begin
 						miso_write_start <= 1'b1;
 						mosi_write_start <= 1'b1;
-						state <= STATE_WRITE;
+						state <= STATE_WRITE_START;
 					end
+				end
+				
+				// delay one clock cycle for for writing to start
+				STATE_WRITE_START: begin
+					state <= STATE_WRITE;
 				end
 				
 				// data writing state -- wait for data to be written and go to done state
 				STATE_WRITE: begin
 					miso_write_start <= 1'b0;
 					mosi_write_start <= 1'b0;
-					if (miso_write_busy | mosi_write_busy == 1'b0) begin
+					if (miso_write_done & mosi_write_done == 1'b1) begin
 						state <= STATE_DONE;
 					end
 				end
@@ -212,8 +228,7 @@ module MitmControl #(
 		.read_sig(sclk_rise_edge_sig),
 		.data_in(miso_in),
 		.data_out(miso_read_data),
-		.busy(miso_read_busy),
-		.data_ready(miso_read_data_ready)
+		.done_sig(miso_read_done)
 	);
 	
 	// MOSI read buffer
@@ -226,8 +241,7 @@ module MitmControl #(
 		.read_sig(sclk_rise_edge_sig),
 		.data_in(mosi_in),
 		.data_out(mosi_read_data),
-		.busy(mosi_read_busy),
-		.data_ready(mosi_read_data_ready)
+		.done_sig(mosi_read_done)
 	);
 	
 	
@@ -244,7 +258,7 @@ module MitmControl #(
 		.fake_mosi_data(fake_mosi_data),
 		.fake_miso_select(fake_miso_select),
 		.fake_mosi_select(fake_mosi_select),
-		.data_valid(fake_data_valid)
+		.done_sig(mitm_logic_done)
 	);
 	
 	
@@ -258,7 +272,7 @@ module MitmControl #(
 		.write_sig(sclk_fall_edge_sig),
 		.data_in(fake_miso_data),
 		.data_out(fake_miso_out),
-		.busy(miso_write_busy)
+		.done_sig(miso_write_done)
 	);
 	
 	// MOSI write buffer
@@ -271,7 +285,7 @@ module MitmControl #(
 		.write_sig(sclk_fall_edge_sig),
 		.data_in(fake_mosi_data),
 		.data_out(fake_mosi_out),
-		.busy(mosi_write_busy)
+		.done_sig(mosi_write_done)
 	);
 	
 	

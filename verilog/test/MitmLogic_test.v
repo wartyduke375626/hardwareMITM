@@ -19,7 +19,7 @@ module MitmLogic_test();
 	wire	[DATA_SIZE-1:0]	fake_mosi_data;
 	wire					fake_miso_select;
 	wire					fake_mosi_select;
-	wire					data_valid;
+	wire					done_sig;
 	
 	// internal registers
 	reg					sys_clk = 1'b0;
@@ -43,7 +43,7 @@ module MitmLogic_test();
 		.fake_mosi_data(fake_mosi_data),
 		.fake_miso_select(fake_miso_select),
 		.fake_mosi_select(fake_mosi_select),
-		.data_valid(data_valid)
+		.done_sig(done_sig)
 	);
 	
 	// generate sys_clock signal
@@ -77,8 +77,8 @@ module MitmLogic_test();
 		#(CLK_PERIOD_NS);
 		eval = 1'b0;
 		
-		// wait for valid data signal
-		wait (data_valid == 1'b1);
+		// wait for done signal
+		wait (done_sig == 1'b1);
 		
 		// set some input data
 		real_miso_data = 8'h40;
@@ -89,8 +89,8 @@ module MitmLogic_test();
 		#(CLK_PERIOD_NS);
 		eval = 1'b0;
 		
-		// wait for valid data signal
-		wait (data_valid == 1'b1);
+		// wait for done signal
+		wait (done_sig == 1'b1);
 		
 		// wait some time to visualize
 		#100;

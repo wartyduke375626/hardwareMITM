@@ -17,8 +17,7 @@ module SerialReadBuffer_test();
 	
 	// internal signals
 	wire	[BUF_SIZE-1:0]	data_out;
-	wire					busy;
-	wire					data_ready;
+	wire					done_sig;
 	wire 					read_sig;
 	
 	// internal registers
@@ -53,8 +52,7 @@ module SerialReadBuffer_test();
 		.read_sig(read_sig),
 		.data_in(data_in),
 		.data_out(data_out),
-		.busy(busy),
-		.data_ready(data_ready)
+		.done_sig(done_sig)
 	);
 	
 	// generate sys_clock signal
@@ -148,11 +146,8 @@ module SerialReadBuffer_test();
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
 		
-		// wait for data to be ready
-		wait (data_ready == 1'b1);
-		
-		// wait while buffer is busy
-		wait (busy == 1'b0);
+		// wait for buffer to read data
+		wait (done_sig == 1'b1);
 		
 		// wait for data sending signal
 		wait (signal_data_in == 1'b0);
@@ -169,8 +164,8 @@ module SerialReadBuffer_test();
 		#1;
 		rst = 1'b0;
 		
-		// wait while buffer is busy
-		wait (busy == 1'b0);
+		// wait for buffer to reset
+		wait (done_sig == 1'b1);
 		
 		// wait for data sending signal
 		wait (signal_data_in == 1'b0);
@@ -181,8 +176,8 @@ module SerialReadBuffer_test();
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
 		
-		// wait while buffer is busy
-		wait (busy == 1'b0);
+		// wait for buffer to read data
+		wait (done_sig == 1'b1);
 	end
 	
 	// run simulation (output to .vcd file)

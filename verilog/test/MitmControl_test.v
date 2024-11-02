@@ -138,8 +138,8 @@ module MitmControl_test();
 		
 		
 		// generate some data on input lines:
-		miso_data_to_send = 8'h3a;
-		mosi_data_to_send = 8'he7;
+		miso_data_to_send = 8'h2b;
+		mosi_data_to_send = 8'ha5;
 		
 		// rise edge on SS
 		ss_in = 1'b1;

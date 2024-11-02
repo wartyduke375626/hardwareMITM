@@ -17,7 +17,7 @@ module SerialWriteBuffer_test();
 	
 	// internal signals
 	wire	data_out;
-	wire	busy;
+	wire	done_sig;
 	wire 	write_sig;
 	
 	// internal registers
@@ -52,7 +52,7 @@ module SerialWriteBuffer_test();
 		.write_sig(write_sig),
 		.data_in(data_in),
 		.data_out(data_out),
-		.busy(busy)
+		.done_sig(done_sig)
 	);
 	
 	// generate sys_clock signal
@@ -140,8 +140,8 @@ module SerialWriteBuffer_test();
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
 		
-		// wait while buffer is busy
-		wait (busy == 1'b0);
+		// wait for buffer to write data
+		wait (done_sig == 1'b1);
 		
 		// wait for data sending signal
 		wait (signal_data_out == 1'b0);
@@ -161,8 +161,8 @@ module SerialWriteBuffer_test();
 		#1;
 		rst = 1'b0;
 		
-		// wait while buffer is busy
-		wait (busy == 1'b0);
+		// wait for buffer to reset
+		wait (done_sig == 1'b1);
 		
 		// wait for data sending signal
 		wait (signal_data_out == 1'b0);
@@ -176,8 +176,8 @@ module SerialWriteBuffer_test();
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
 		
-		// wait while buffer is busy
-		wait (busy == 1'b0);
+		// wait for buffer to write data
+		wait (done_sig == 1'b1);
 		
 	end
 	

@@ -18,9 +18,8 @@ module SerialReadBuffer # (
 	input		data_in,
 	
 	// outputs
-	output	reg	[BUF_SIZE-1:0]	data_out = 0,
-	output	reg					busy = 1'b0,
-	output	reg					data_ready = 1'b0
+	output	reg	[BUF_SIZE-1:0]	data_out,
+	output	reg					done_sig = 1'b0
 );
 
 	// local constants
@@ -29,20 +28,17 @@ module SerialReadBuffer # (
 	// states
 	localparam	STATE_IDLE	= 2'd0;
 	localparam	STATE_READ	= 2'd1;
-	localparam	STATE_DONE	= 2'd2;
-	localparam	STATE_RESET	= 2'd3;
+	localparam	STATE_RESET	= 2'd2;
 	
 	// internal registers
 	reg	[1:0]			state = STATE_RESET;
-	reg [BUF_SIZE-1:0]	read_buf = 0;
-	reg	[CTR_SIZE-1:0]	buf_ctr = 0;
+	reg	[CTR_SIZE-1:0]	buf_ctr;
 	
 	always @ (posedge sys_clk or posedge rst)
 	begin
-		// on reset signal busy, invalidate data and go to reset state
+		// on reset signal busy and go to reset state
 		if (rst == 1'b1) begin
-			busy <= 1'b1;
-			data_ready <= 1'b0;
+			done_sig <= 1'b0;
 			state <= STATE_RESET;
 		end
 		
@@ -53,44 +49,39 @@ module SerialReadBuffer # (
 				// in idle state wait for start signal
 				STATE_IDLE: begin
 					if (start == 1'b1) begin
-						busy <= 1'b1;
-						data_ready <= 1'b0;
+						done_sig <= 1'b0;
+						buf_ctr <= 0;
 						state <= STATE_READ;
 					end
 				end
 				
-				// main buffering state
+				// buffering state
 				STATE_READ: begin
-					// if buffer is full go to next state
+					// if buffer is full, signal done and go to idle state
 					if (buf_ctr == BUF_SIZE) begin
-						data_out <= read_buf;
-						data_ready <= 1'b1;
-						state <= STATE_DONE;
+						done_sig <= 1'b1;
+						state <= STATE_IDLE;
 					end
 					
-					// else read next bit on edge signal
+					// else read next bit on read signal
 					else if (read_sig == 1'b1) begin
-						read_buf <= {read_buf[BUF_SIZE-2:0], data_in}; // left shift next data bit
+						data_out <= {data_out[BUF_SIZE-2:0], data_in}; // left shift next data bit
 						buf_ctr <= buf_ctr + 1;
 					end
 				end
 				
-				// prepare internal state for next buffering
-				STATE_DONE: begin
-					read_buf <= 0;
+				// reset internal state
+				STATE_RESET: begin
+					data_out <= 0;
 					buf_ctr <= 0;
-					busy <= 1'b0;
+					done_sig <= 1'b1;
 					state <= STATE_IDLE;
 				end
 				
-				// reset internal state
-				STATE_RESET: begin
-					data_ready <= 1'b0;
-					data_out <= 0;
-					read_buf <= 0;
-					buf_ctr <= 0;
-					busy <= 1'b0;
-					state <= STATE_IDLE;
+				// this should never occur
+				default: begin
+					done_sig <= 1'b0;
+					state <= STATE_RESET;
 				end
 				
 			endcase
