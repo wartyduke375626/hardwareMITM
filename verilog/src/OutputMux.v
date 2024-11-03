@@ -17,7 +17,7 @@ module OutputMux # (
 	input wire [WIDTH-1:0] select_line,
 	
 	// outputs
-	output [WIDTH-1:0] out_line
+	output wire [WIDTH-1:0] out_line
 );
 
 	// multiplexer logic (bitwise selection)

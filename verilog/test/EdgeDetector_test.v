@@ -12,7 +12,7 @@ module EdgeDetector_test();
 	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
 	localparam SIM_DURATION = 20_000;	// 20 us
 	
-	localparam FALL_EDGE = 0;
+	localparam FALL_EDGE = 1;
 	
 	// internal signals
 	wire edge_sig;

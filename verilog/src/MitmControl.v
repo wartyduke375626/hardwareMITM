@@ -29,43 +29,52 @@ module MitmControl #(
 );
 	
 	// internal signals
-	wire sclk_rise_edge_sig;
-	wire sclk_fall_edge_sig;
 	
-	wire ss_rise_edge_sig;
-	wire ss_fall_edge_sig;
+	// edge signals
+	wire sclk_rise_edge;
+	wire sclk_fall_edge;
 	
-	wire [DATA_SIZE-1:0] miso_read_data;
-	wire miso_read_done;
+	wire ss_rise_edge;
+	wire ss_fall_edge;
 	
-	wire [DATA_SIZE-1:0] mosi_read_data;
-	wire mosi_read_done;
+	// data lines
+	wire [DATA_SIZE-1:0] real_miso_data;
+	wire [DATA_SIZE-1:0] real_mosi_data;
 	
 	wire [DATA_SIZE-1:0] fake_miso_data;
 	wire [DATA_SIZE-1:0] fake_mosi_data;
-	wire fake_miso_select;
-	wire fake_mosi_select;
-	wire mitm_logic_done;
 	
-	wire miso_write_done;
 	wire fake_miso_out;
-	
-	wire mosi_write_done;
 	wire fake_mosi_out;
 	
+	// data control
+	wire fake_miso_select;
+	wire fake_mosi_select;
+	
+	// module control
+	wire miso_read_done;
+	wire mosi_read_done;
+	wire miso_write_done;
+	wire mosi_write_done;
+	
+	wire comm_done;
+	assign comm_done = miso_read_done & mosi_read_done & miso_write_done & mosi_write_done;
+	
+	wire mitm_logic_done;
+	
 	// internal registers
-	reg miso_read_start = 1'b0;
-	reg mosi_read_start = 1'b0;
 	
-	reg mitm_eval = 1'b0;
-	
-	reg miso_write_start = 1'b0;
-	reg mosi_write_start = 1'b0;
-	
+	// data lines
 	reg fake_sclk_out = 1'b0;
-	reg fake_sclk_select = 1'b0;
 	reg fake_ss_out = 1'b0;
+	
+	// data control
+	reg fake_sclk_select = 1'b0;
 	reg fake_ss_select = 1'b0;
+	
+	// control
+	reg comm_start = 1'b0;
+	reg mitm_eval = 1'b0;
 	
 	reg	[2:0] state = STATE_RESET;
 	
@@ -92,11 +101,8 @@ module MitmControl #(
 				
 				// in idle state wait for SS rising edge and signal communication buffering start
 				STATE_IDLE: begin
-					if (ss_rise_edge_sig == 1'b1) begin
-						miso_read_start <= 1'b1;
-						mosi_read_start <= 1'b1;
-						miso_write_start <= 1'b1;
-						mosi_write_start <= 1'b1;
+					if (ss_rise_edge == 1'b1) begin
+						comm_start <= 1'b1;
 						state <= STATE_COMM_START;
 					end
 				end
@@ -108,11 +114,8 @@ module MitmControl #(
 				
 				// communication buffering state -- wait for data to be transfered and signal mitm evaluation
 				STATE_COMM: begin
-					miso_read_start <= 1'b0;
-					mosi_read_start <= 1'b0;
-					miso_write_start <= 1'b0;
-					mosi_write_start <= 1'b0;
-					if ((miso_read_done & mosi_read_done & miso_write_done & mosi_write_done) == 1'b1) begin
+					comm_start <= 1'b0;
+					if (comm_done == 1'b1) begin
 						mitm_eval <= 1'b1;
 						state <= STATE_MITM_START;
 					end
@@ -133,24 +136,20 @@ module MitmControl #(
 				
 				// prepare for next iteration -- wait for SS falling edge
 				STATE_DONE: begin
-					if (ss_fall_edge_sig == 1'b1) begin
+					if (ss_fall_edge == 1'b1) begin
 						state <= STATE_IDLE;
 					end
 				end
 				
 				// reset internal state
 				STATE_RESET: begin
-					miso_read_start <= 1'b0;
-					mosi_read_start <= 1'b0;
-
+					comm_start <= 1'b0;
 					mitm_eval <= 1'b0;
 	
-					miso_write_start <= 1'b0;
-					mosi_write_start <= 1'b0;
-	
 					fake_sclk_out <= 1'b0;
-					fake_sclk_select <= 1'b0;
 					fake_ss_out <= 1'b0;
+					
+					fake_sclk_select <= 1'b0;
 					fake_ss_select <= 1'b0;
 					
 					state <= STATE_IDLE;
@@ -170,7 +169,7 @@ module MitmControl #(
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.sig(sclk_in),
-		.edge_sig(sclk_rise_edge_sig)
+		.edge_sig(sclk_rise_edge)
 	);
 	
 	// SCLK fall edge detector
@@ -180,7 +179,7 @@ module MitmControl #(
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.sig(sclk_in),
-		.edge_sig(sclk_fall_edge_sig)
+		.edge_sig(sclk_fall_edge)
 	);
 	
 	// SS rise edge detector
@@ -190,7 +189,7 @@ module MitmControl #(
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.sig(ss_in),
-		.edge_sig(ss_rise_edge_sig)
+		.edge_sig(ss_rise_edge)
 	);
 	
 	// SS fall edge detector
@@ -200,7 +199,7 @@ module MitmControl #(
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.sig(ss_in),
-		.edge_sig(ss_fall_edge_sig)
+		.edge_sig(ss_fall_edge)
 	);
 	
 	
@@ -210,10 +209,10 @@ module MitmControl #(
 	) misoReadBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst),
-		.start(miso_read_start),
-		.read_sig(sclk_rise_edge_sig),
+		.start(comm_start),
+		.read_sig(sclk_rise_edge),
 		.data_in(miso_in),
-		.data_out(miso_read_data),
+		.data_out(real_miso_data),
 		.done_sig(miso_read_done)
 	);
 	
@@ -223,30 +222,12 @@ module MitmControl #(
 	) mosiReadBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst),
-		.start(mosi_read_start),
-		.read_sig(sclk_rise_edge_sig),
+		.start(comm_start),
+		.read_sig(sclk_rise_edge),
 		.data_in(mosi_in),
-		.data_out(mosi_read_data),
+		.data_out(real_mosi_data),
 		.done_sig(mosi_read_done)
 	);
-	
-	
-	// MITM logic
-	MitmLogic #(
-		.DATA_SIZE(DATA_SIZE)
-	) mitmLogic (
-		.sys_clk(sys_clk),
-		.rst(rst),
-		.eval(mitm_eval),
-		.real_miso_data(miso_read_data),
-		.real_mosi_data(mosi_read_data),
-		.fake_miso_data(fake_miso_data),
-		.fake_mosi_data(fake_mosi_data),
-		.fake_miso_select(fake_miso_select),
-		.fake_mosi_select(fake_mosi_select),
-		.done_sig(mitm_logic_done)
-	);
-	
 	
 	// MISO write buffer
 	SerialWriteBuffer #(
@@ -254,8 +235,8 @@ module MitmControl #(
 	) misoWriteBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst),
-		.start(miso_write_start),
-		.write_sig(sclk_fall_edge_sig),
+		.start(comm_start),
+		.write_sig(sclk_fall_edge),
 		.data_in(fake_miso_data),
 		.data_out(fake_miso_out),
 		.done_sig(miso_write_done)
@@ -267,11 +248,28 @@ module MitmControl #(
 	) mosiWriteBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst),
-		.start(mosi_write_start),
-		.write_sig(sclk_fall_edge_sig),
+		.start(comm_start),
+		.write_sig(sclk_fall_edge),
 		.data_in(fake_mosi_data),
 		.data_out(fake_mosi_out),
 		.done_sig(mosi_write_done)
+	);
+	
+	
+	// MITM logic
+	MitmLogic #(
+		.DATA_SIZE(DATA_SIZE)
+	) mitmLogic (
+		.sys_clk(sys_clk),
+		.rst(rst),
+		.eval(mitm_eval),
+		.real_miso_data(real_miso_data),
+		.real_mosi_data(real_mosi_data),
+		.fake_miso_data(fake_miso_data),
+		.fake_mosi_data(fake_mosi_data),
+		.fake_miso_select(fake_miso_select),
+		.fake_mosi_select(fake_mosi_select),
+		.done_sig(mitm_logic_done)
 	);
 	
 	
