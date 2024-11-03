@@ -8,32 +8,32 @@
 module MitmControl_test();
 
 	// local constants
-	localparam	SYS_CLK	= 12_000_000;	// 12 MHz
-	localparam	CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
-	localparam	SIM_DURATION = 1_000_000;	// 1000 us
-	localparam	DATA_CLK_PERIOD_NS = 20 * CLK_PERIOD_NS; // data rate has to be slower then sys_clk
+	localparam SYS_CLK = 12_000_000;	// 12 MHz
+	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
+	localparam SIM_DURATION = 1_000_000;	// 1000 us
+	localparam DATA_CLK_PERIOD_NS = 20 * CLK_PERIOD_NS;	// data rate has to be slower then sys_clk
 	
-	localparam	DATA_SIZE = 8;
-	localparam	BUS_WIDTH = 4;
+	localparam DATA_SIZE = 8;
+	localparam BUS_WIDTH = 4;
 	
 	// internal signals
-	wire	miso_out;
-	wire	mosi_out;
-	wire	sclk_out;
-	wire	ss_out;
+	wire miso_out;
+	wire mosi_out;
+	wire sclk_out;
+	wire ss_out;
 	
 	// internal registers
-	reg		sys_clk = 1'b0;
-	reg		rst = 1'b0;
-	reg		miso_in = 1'b0;
-	reg		mosi_in = 1'b0;
-	reg		sclk_in = 1'b0;
-	reg		ss_in = 1'b0;
+	reg sys_clk = 1'b0;
+	reg rst = 1'b0;
+	reg miso_in = 1'b0;
+	reg mosi_in = 1'b0;
+	reg sclk_in = 1'b0;
+	reg ss_in = 1'b0;
 	
 	// helper variables
-	integer					i;
-	reg		[DATA_SIZE-1:0]	miso_data_to_send;
-	reg		[DATA_SIZE-1:0]	mosi_data_to_send;
+	integer i;
+	reg [DATA_SIZE-1:0] miso_data_to_send;
+	reg [DATA_SIZE-1:0] mosi_data_to_send;
 	
 	// instantiate uut
 	MitmControl #(

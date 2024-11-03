@@ -1,41 +1,42 @@
 /**
  * Serial data write buffer:
  * - writes BUF_SIZE bits of data to a serial line from internal buffer, synchronizing on write signals
+ * - the first bit will be written to the output line when the start signal is triggered
+ * - each consecutive write signal causes the next bit to be written
+ * - once all the last bit has been written, it is maintained on the output line until the next write signal, which terminates writing
  * - the write signal must be synchronous to the system clock
- * - the output signal is maintained on the output line until the next write signal
- * - the last bit written remains on the output line until the next writing sequence
 **/
 
 module SerialWriteBuffer # (
 
 	// parameters
-	parameter	BUF_SIZE = 8
+	parameter BUF_SIZE = 8
 ) (
 	
 	// inputs
-	input					sys_clk,
-	input					rst,
-	input					start,
-	input					write_sig,
-	input	[BUF_SIZE-1:0]	data_in,
+	input wire sys_clk,
+	input wire rst,
+	input wire start,
+	input wire write_sig,
+	input wire [BUF_SIZE-1:0] data_in,
 	
 	// outputs
-	output	reg	data_out,
-	output	reg	done_sig = 1'b0
+	output reg data_out,
+	output reg done_sig = 1'b0
 );
 
 	// local constants
-	localparam	CTR_SIZE = $clog2(BUF_SIZE+1); // storing A requires exactly ceil(lg(A+1)) bits, max buf_ctr value is BUF_SIZE
+	localparam CTR_SIZE = $clog2(BUF_SIZE);	// storing A requires exactly ceil(lg(A+1)) bits, max buf_ctr value is BUF_SIZE-1 (internal buffer has one less bit)
 
 	// states
-	localparam	STATE_IDLE	= 2'd0;
-	localparam	STATE_WRITE	= 2'd1;
-	localparam	STATE_RESET	= 2'd2;
+	localparam STATE_IDLE = 2'd0;
+	localparam STATE_WRITE = 2'd1;
+	localparam STATE_RESET = 2'd2;
 	
 	// internal registers
-	reg	[1:0]			state = STATE_RESET;
-	reg [BUF_SIZE-1:0]	write_buf;
-	reg	[CTR_SIZE-1:0]	buf_ctr;
+	reg [1:0] state = STATE_RESET;
+	reg [BUF_SIZE-2:0] write_buf;	// we don't need to store the first bit as it is output immediately when start signal triggers
+	reg [CTR_SIZE-1:0] buf_ctr;
 	
 	always @ (posedge sys_clk or posedge rst)
 	begin
@@ -53,26 +54,30 @@ module SerialWriteBuffer # (
 				STATE_IDLE: begin
 					if (start == 1'b1) begin
 						done_sig <= 1'b0;
-						data_out <= 1'b0;
 						buf_ctr <= 0;
-						write_buf <= data_in;
+						data_out <= data_in[BUF_SIZE-1];	// write first bit (msb)
+						write_buf <= data_in[BUF_SIZE-2:0];	// copy the rest in internal buffer
 						state <= STATE_WRITE;
 					end
 				end
 				
 				// buffering state
 				STATE_WRITE: begin
-					// if buffer is empty, signal done and go to idle state
-					if (buf_ctr == BUF_SIZE) begin
-						done_sig <= 1'b1;
-						state <= STATE_IDLE;
-					end
+					// on write signal change output
+					if (write_sig == 1'b1) begin
+						// if internal buffer is empty (internal buffer has one less bit), clear output, signal done and go to idle state
+						if (buf_ctr == BUF_SIZE-1) begin
+							done_sig <= 1'b1;
+							data_out <= 1'b0;
+							state <= STATE_IDLE;
+						end
 					
-					// else write next bit on write signal
-					else if (write_sig == 1'b1) begin
-						data_out <= write_buf[BUF_SIZE-1];
-						write_buf <= write_buf << 1;
-						buf_ctr <= buf_ctr + 1;
+						// else write next bit
+						else begin
+							data_out <= write_buf[BUF_SIZE-2];
+							write_buf <= write_buf << 1;
+							buf_ctr <= buf_ctr + 1;
+						end
 					end
 				end
 				

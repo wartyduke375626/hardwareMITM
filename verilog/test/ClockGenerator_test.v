@@ -8,22 +8,22 @@
 module ClockGenerator_test();
 
 	// local constants
-	localparam	SYS_CLK	= 12_000_000;	// 12 MHz
-	localparam	CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
-	localparam	SIM_DURATION = 10_000;	// 10 us
+	localparam SYS_CLK = 12_000_000;	// 12 MHz
+	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
+	localparam SIM_DURATION = 10_000;	// 10 us
 	
-	localparam	DIV_FACTOR = 12;
-	localparam	CYCLE_COUNT = 8;
-	localparam	ACTIVE_LOW = 0;
+	localparam DIV_FACTOR = 12;
+	localparam CYCLE_COUNT = 8;
+	localparam ACTIVE_LOW = 0;
 	
 	// internal signals
-	wire	out_clk;
-	wire	busy;
+	wire out_clk;
+	wire busy;
 	
 	// internal registers
-	reg		sys_clk = 1'b0;
-	reg		rst = 1'b0;
-	reg		start = 1'b0;
+	reg sys_clk = 1'b0;
+	reg rst = 1'b0;
+	reg start = 1'b0;
 	
 	// instantiate uut
 	ClockGenerator #(

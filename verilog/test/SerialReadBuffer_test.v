@@ -8,29 +8,29 @@
 module SerialReadBuffer_test();
 
 	// local constants
-	localparam	SYS_CLK	= 12_000_000;	// 12 MHz
-	localparam	CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
-	localparam	SIM_DURATION = 50_000;	// 50 us
-	localparam	DATA_IN_CLK_PERIOD_NS = 8 * CLK_PERIOD_NS; // data rate has to be slower then sys_clk
+	localparam SYS_CLK = 12_000_000;	// 12 MHz
+	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
+	localparam SIM_DURATION = 50_000;	// 50 us
+	localparam DATA_IN_CLK_PERIOD_NS = 8 * CLK_PERIOD_NS;	// data rate has to be slower then sys_clk
 	
-	localparam	BUF_SIZE = 8;
+	localparam BUF_SIZE = 8;
 	
 	// internal signals
-	wire	[BUF_SIZE-1:0]	data_out;
-	wire					done_sig;
-	wire 					read_sig;
+	wire [BUF_SIZE-1:0] data_out;
+	wire done_sig;
+	wire read_sig;
 	
 	// internal registers
-	reg		sys_clk = 1'b0;
-	reg		data_clk = 1'b0; // virtual clock to send data on input line
-	reg		rst = 1'b0;
-	reg		start = 1'b0;
-	reg		data_in = 1'b0;
-	reg		signal_data_in = 1'b0;
+	reg sys_clk = 1'b0;
+	reg data_clk = 1'b0;	// virtual clock to send data on input line
+	reg rst = 1'b0;
+	reg start = 1'b0;
+	reg data_in = 1'b0;
+	reg signal_data_in = 1'b0;
 	
 	// helper variables
-	integer					i;
-	reg		[BUF_SIZE-1:0]	data_to_send;
+	integer i;
+	reg [BUF_SIZE-1:0] data_to_send;
 	
 	// instantiate edge detector to generate synchronous read signal
 	EdgeDetector #(

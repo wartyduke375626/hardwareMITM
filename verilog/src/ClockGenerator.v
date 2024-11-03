@@ -10,37 +10,37 @@
 module ClockGenerator # (
 
 	// parameters
-	parameter	DIV_FACTOR = 12,
-	parameter	CYCLE_COUNT = 8,
-	parameter	ACTIVE_LOW = 0
+	parameter DIV_FACTOR = 12,
+	parameter CYCLE_COUNT = 8,
+	parameter ACTIVE_LOW = 0
 ) (
 
 	// inputs
-	input		sys_clk,
-	input		rst,
-	input		start,
+	input wire sys_clk,
+	input wire rst,
+	input wire start,
 	
 	// outputs
-	output	reg	out_clk = (ACTIVE_LOW == 0) ? 1'b0 : 1'b1,
-	output	reg	busy = 1'b0
+	output reg out_clk = (ACTIVE_LOW == 0) ? 1'b0 : 1'b1,
+	output reg busy = 1'b0
 );
 
 	// local constants
-	localparam	DIV_CTR_MAX = DIV_FACTOR/2 - 1; // we need to toggle the output 2 times per divided clock cycle
-	localparam	DIV_CTR_SIZE = $clog2(DIV_CTR_MAX+1); // storing A requires exactly ceil(lg(A+1)) bits
-	localparam	CYCLE_CTR_MAX = 2*CYCLE_COUNT - 1; // every clock cycle toggles output 2 times
-	localparam	CYCLE_CTR_SIZE = $clog2(CYCLE_CTR_MAX+1);
+	localparam DIV_CTR_MAX = DIV_FACTOR/2 - 1;	// we need to toggle the output 2 times per divided clock cycle
+	localparam DIV_CTR_SIZE = $clog2(DIV_CTR_MAX+1);	// storing A requires exactly ceil(lg(A+1)) bits
+	localparam CYCLE_CTR_MAX = 2*CYCLE_COUNT - 1;	// every clock cycle toggles output 2 times
+	localparam CYCLE_CTR_SIZE = $clog2(CYCLE_CTR_MAX+1);
 	
 	// states
-	localparam	STATE_IDLE	= 2'd0;
-	localparam	STATE_CLOCK	= 2'd1;
-	localparam	STATE_DONE	= 2'd2;
-	localparam	STATE_RESET	= 2'd3;
+	localparam STATE_IDLE = 2'd0;
+	localparam STATE_CLOCK = 2'd1;
+	localparam STATE_DONE = 2'd2;
+	localparam STATE_RESET = 2'd3;
 
 	// internal registers
-	reg	[1:0]					state = STATE_RESET;
-	reg	[DIV_CTR_SIZE-1:0]		div_ctr = 0;
-	reg	[CYCLE_CTR_SIZE-1:0]	cycle_ctr = 0;
+	reg [1:0] state = STATE_RESET;
+	reg [DIV_CTR_SIZE-1:0] div_ctr = 0;
+	reg [CYCLE_CTR_SIZE-1:0] cycle_ctr = 0;
 
 	always @ (posedge sys_clk or posedge rst)
 	begin

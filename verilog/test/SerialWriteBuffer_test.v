@@ -8,33 +8,33 @@
 module SerialWriteBuffer_test();
 
 	// local constants
-	localparam	SYS_CLK	= 12_000_000;	// 12 MHz
-	localparam	CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
-	localparam	SIM_DURATION = 50_000;	// 50 us
-	localparam	DATA_OUT_CLK_PERIOD_NS = 8 * CLK_PERIOD_NS; // data rate has to be slower then sys_clk
+	localparam SYS_CLK = 12_000_000;	// 12 MHz
+	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
+	localparam SIM_DURATION = 50_000;	// 50 us
+	localparam DATA_OUT_CLK_PERIOD_NS = 8 * CLK_PERIOD_NS;	// data rate has to be slower then sys_clk
 	
-	localparam	BUF_SIZE = 8;
+	localparam BUF_SIZE = 8;
 	
 	// internal signals
-	wire	data_out;
-	wire	done_sig;
-	wire 	write_sig;
+	wire data_out;
+	wire done_sig;
+	wire  write_sig;
 	
 	// internal registers
-	reg					sys_clk = 1'b0;
-	reg					data_clk = 1'b0; // virtual clock to write data on output line
-	reg					rst = 1'b0;
-	reg					start = 1'b0;
-	reg	[BUF_SIZE-1:0]	data_in = 0;
-	reg					signal_data_out = 1'b0;
+	reg sys_clk = 1'b0;
+	reg data_clk = 1'b0; // virtual clock to write data on output line
+	reg rst = 1'b0;
+	reg start = 1'b0;
+	reg [BUF_SIZE-1:0] data_in = 0;
+	reg signal_data_out = 1'b0;
 	
 	// helper variables
-	integer			i;
-	reg		[0:7]	data_to_send; // send most significat bit first
+	integer i;
+	reg [0:7] data_to_send; // send most significat bit first
 	
 	// instantiate edge detector to generate synchronous write signal
 	EdgeDetector #(
-		.FALL_EDGE(0)
+		.FALL_EDGE(1)	// we want our buffer to synchronize on falling edge (data needs to be present on next rising edge)
 	) dataInDetect (
 		.sys_clk(sys_clk),
 		.rst(rst),
@@ -169,7 +169,7 @@ module SerialWriteBuffer_test();
 		wait (signal_data_out == 1'b1);
 		
 		// set byte to write
-		data_in = 8'he4;
+		data_in = 8'hb5;
 		
 		// send signal to start reading byte 2
 		start = 1'b1;

@@ -7,32 +7,32 @@
 module MitmLogic # (
 
 	// parameters
-	parameter	DATA_SIZE = 8
+	parameter DATA_SIZE = 8
 ) (
 
 	// inputs
-	input					sys_clk,
-	input					rst,
-	input					eval,
-	input	[DATA_SIZE-1:0] real_miso_data,
-	input	[DATA_SIZE-1:0] real_mosi_data,
+	input wire sys_clk,
+	input wire rst,
+	input wire eval,
+	input wire [DATA_SIZE-1:0] real_miso_data,
+	input wire [DATA_SIZE-1:0] real_mosi_data,
 	
 	// outputs
-	output	reg	[DATA_SIZE-1:0] fake_miso_data,
-	output	reg	[DATA_SIZE-1:0] fake_mosi_data,
-	output	reg					fake_miso_select,
-	output	reg					fake_mosi_select,
-	output	reg					done_sig = 1'b0
+	output reg [DATA_SIZE-1:0] fake_miso_data,
+	output reg [DATA_SIZE-1:0] fake_mosi_data,
+	output reg fake_miso_select,
+	output reg fake_mosi_select,
+	output reg done_sig = 1'b0
 	
 );
 
 	// states
-	localparam	STATE_IDLE	= 2'd0;
-	localparam	STATE_MITM	= 2'd1;
-	localparam	STATE_RESET	= 2'd2;
+	localparam STATE_IDLE = 2'd0;
+	localparam STATE_MITM = 2'd1;
+	localparam STATE_RESET = 2'd2;
 	
 	// internal registers
-	reg	[1:0]			state = STATE_RESET;
+	reg [1:0] state = STATE_RESET;
 
 	always @ (posedge sys_clk or posedge rst)
 	begin

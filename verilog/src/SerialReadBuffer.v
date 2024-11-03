@@ -7,32 +7,32 @@
 module SerialReadBuffer # (
 
 	// parameters
-	parameter	BUF_SIZE = 8
+	parameter BUF_SIZE = 8
 ) (
 	
 	// inputs
-	input		sys_clk,
-	input		rst,
-	input		start,
-	input		read_sig,
-	input		data_in,
+	input wire sys_clk,
+	input wire rst,
+	input wire start,
+	input wire read_sig,
+	input wire data_in,
 	
 	// outputs
-	output	reg	[BUF_SIZE-1:0]	data_out,
-	output	reg					done_sig = 1'b0
+	output reg [BUF_SIZE-1:0] data_out,
+	output reg done_sig = 1'b0
 );
 
 	// local constants
-	localparam	CTR_SIZE = $clog2(BUF_SIZE+1); // storing A requires exactly ceil(lg(A+1)) bits, max buf_ctr value is BUF_SIZE
+	localparam CTR_SIZE = $clog2(BUF_SIZE+1);	// storing A requires exactly ceil(lg(A+1)) bits, max buf_ctr value is BUF_SIZE
 
 	// states
-	localparam	STATE_IDLE	= 2'd0;
-	localparam	STATE_READ	= 2'd1;
-	localparam	STATE_RESET	= 2'd2;
+	localparam STATE_IDLE = 2'd0;
+	localparam STATE_READ = 2'd1;
+	localparam STATE_RESET = 2'd2;
 	
 	// internal registers
-	reg	[1:0]			state = STATE_RESET;
-	reg	[CTR_SIZE-1:0]	buf_ctr;
+	reg [1:0] state = STATE_RESET;
+	reg [CTR_SIZE-1:0] buf_ctr;
 	
 	always @ (posedge sys_clk or posedge rst)
 	begin

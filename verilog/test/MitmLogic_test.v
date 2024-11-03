@@ -8,26 +8,26 @@
 module MitmLogic_test();
 
 	// local constants
-	localparam	SYS_CLK	= 12_000_000;	// 12 MHz
-	localparam	CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
-	localparam	SIM_DURATION = 10_000;	// 10 us
+	localparam SYS_CLK = 12_000_000;	// 12 MHz
+	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
+	localparam SIM_DURATION = 10_000;	// 10 us
 	
-	localparam	DATA_SIZE = 8;
+	localparam DATA_SIZE = 8;
 	
 	// internal signals
-	wire	[DATA_SIZE-1:0]	fake_miso_data;
-	wire	[DATA_SIZE-1:0]	fake_mosi_data;
-	wire					fake_miso_select;
-	wire					fake_mosi_select;
-	wire					done_sig;
+	wire [DATA_SIZE-1:0] fake_miso_data;
+	wire [DATA_SIZE-1:0] fake_mosi_data;
+	wire fake_miso_select;
+	wire fake_mosi_select;
+	wire done_sig;
 	
 	// internal registers
-	reg					sys_clk = 1'b0;
-	reg					rst = 1'b0;
-	reg					eval = 1'b0;
+	reg sys_clk = 1'b0;
+	reg rst = 1'b0;
+	reg eval = 1'b0;
 	
-	reg	[DATA_SIZE-1:0] real_miso_data;
-	reg	[DATA_SIZE-1:0] real_mosi_data;
+	reg [DATA_SIZE-1:0] real_miso_data;
+	reg [DATA_SIZE-1:0] real_mosi_data;
 	
 
 	// instantiate uut

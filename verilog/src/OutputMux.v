@@ -8,16 +8,16 @@
 module OutputMux # (
 
 	// parameters
-	parameter	WIDTH = 4
+	parameter WIDTH = 4
 ) (
 
 	// inputs
-	input	[WIDTH-1:0]	in_line0,
-	input	[WIDTH-1:0]	in_line1,
-	input	[WIDTH-1:0]	select_line,
+	input wire [WIDTH-1:0] in_line0,
+	input wire [WIDTH-1:0] in_line1,
+	input wire [WIDTH-1:0] select_line,
 	
 	// outputs
-	output	[WIDTH-1:0]	out_line
+	output [WIDTH-1:0] out_line
 );
 
 	// multiplexer logic (bitwise selection)

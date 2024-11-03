@@ -8,17 +8,17 @@
 module OutputMux_test();
 
 	// local constants
-	localparam	SIM_DURATION = 300;	// 300 ns
+	localparam SIM_DURATION = 300;	// 300 ns
 	
-	localparam	WIDTH = 4;
+	localparam WIDTH = 4;
 	
 	// internal signals
-	wire	[WIDTH-1:0]	out_line;
+	wire [WIDTH-1:0] out_line;
 	
 	// internal registers
-	reg		[WIDTH-1:0]	in_line0 = 0;
-	reg		[WIDTH-1:0]	in_line1 = 0;
-	reg		[WIDTH-1:0]	select_line = 4'b0000;
+	reg [WIDTH-1:0] in_line0 = 0;
+	reg [WIDTH-1:0] in_line1 = 0;
+	reg [WIDTH-1:0] select_line = 4'b0000;
 	
 	// instantiate uut
 	OutputMux #(

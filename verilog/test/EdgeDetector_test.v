@@ -8,19 +8,19 @@
 module EdgeDetector_test();
 
 	// local constants
-	localparam	SYS_CLK	= 12_000_000;	// 12 MHz
-	localparam	CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
-	localparam	SIM_DURATION = 20_000;	// 20 us
+	localparam SYS_CLK = 12_000_000;	// 12 MHz
+	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
+	localparam SIM_DURATION = 20_000;	// 20 us
 	
-	localparam	FALL_EDGE = 0;
+	localparam FALL_EDGE = 0;
 	
 	// internal signals
-	wire	edge_sig;
+	wire edge_sig;
 	
 	// internal registers
-	reg		sys_clk = 1'b0;
-	reg		rst = 1'b0;
-	reg		sig = 1'b0;
+	reg sys_clk = 1'b0;
+	reg rst = 1'b0;
+	reg sig = 1'b0;
 	
 	// helper variables
 	integer i;

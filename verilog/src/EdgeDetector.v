@@ -8,23 +8,23 @@
 module EdgeDetector # (
 
 	// parameters
-	parameter	FALL_EDGE = 0
+	parameter FALL_EDGE = 0
 ) (
 
 	// inputs
-	input		sys_clk,
-	input		rst,
-	input		sig,
+	input wire sys_clk,
+	input wire rst,
+	input wire sig,
 	
 	// outputs
-	output	reg	edge_sig = 1'b0
+	output reg edge_sig = 1'b0
 );
 
 	// internal registers
-	reg			sig_sync1 = 1'b0;
-	reg 		sig_sync2 = 1'b0;
-	reg 		old_val = 1'b0;
-	reg [1:0]	rst_ctr = 2'd0;
+	reg sig_sync1 = 1'b0;
+	reg sig_sync2 = 1'b0;
+	reg old_val = 1'b0;
+	reg [1:0] rst_ctr = 2'd0;
 
 	always @ (posedge sys_clk or posedge rst)
 	begin
