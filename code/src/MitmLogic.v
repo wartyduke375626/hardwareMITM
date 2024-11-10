@@ -41,7 +41,7 @@ module MitmLogic (
 	// internal registers
 	reg [2:0] state = STATE_RESET;
 
-	always @ (posedge sys_clk or posedge rst)
+	always @ (posedge sys_clk)
 	begin
 		// on reset signal busy and go to reset state
 		if (rst == 1'b1) begin

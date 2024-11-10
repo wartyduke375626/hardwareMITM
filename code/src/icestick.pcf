@@ -1,0 +1,19 @@
+#
+# - PCF for Icestick FPGA MTIM atack on SPI bus
+#
+
+# system inputs
+set_io             	    ref_clk     21
+set_io  -pullup yes     rst_btn     44
+
+# bus inputs
+set_io                  miso_in     78
+set_io                  mosi_in     88
+set_io                  sclk_in     90
+set_io                  ss_in       91
+
+# bus outputs
+set_io                  miso_out    87
+set_io                  mosi_out    79
+set_io                  sclk_out    80
+set_io                  ss_out      81

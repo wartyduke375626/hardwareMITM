@@ -42,7 +42,7 @@ module ClockGenerator # (
 	reg [DIV_CTR_SIZE-1:0] div_ctr = 0;
 	reg [CYCLE_CTR_SIZE-1:0] cycle_ctr = 0;
 
-	always @ (posedge sys_clk or posedge rst)
+	always @ (posedge sys_clk)
 	begin
 		// on reset signal busy and go to reset state
 		if (rst == 1'b1) begin

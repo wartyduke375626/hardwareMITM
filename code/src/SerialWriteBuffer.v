@@ -41,7 +41,7 @@ module SerialWriteBuffer # (
 	reg [BUF_SIZE-2:0] write_buf;	// we don't need to store the first bit as it is output immediately when start signal triggers
 	reg [CTR_SIZE-1:0] ctr;
 	
-	always @ (posedge sys_clk or posedge rst)
+	always @ (posedge sys_clk)
 	begin
 		// on reset signal busy and go to reset state
 		if (rst == 1'b1) begin

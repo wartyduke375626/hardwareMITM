@@ -58,20 +58,19 @@ module MitmLogic_test();
 		sys_clk = ~sys_clk;
 	end
 	
-	// pulse reset line high at the begining
-	initial
-	begin
-		#10;
-		rst = 1'b1;
-		#1;
-		rst = 1'b0;
-	end
-	
 	// test code
 	initial
 	begin
-		// wait some time for initialization
+		// wait some time
 		#100;
+		
+		// send reset signal at the beginning
+		rst = 1'b1;
+		#(CLK_PERIOD_NS);
+		rst = 1'b0;
+	
+		// wait some time for initialization
+		#(2*CLK_PERIOD_NS);
 		
 		// wait for evaluation
 		wait (eval_done == 1'b1);

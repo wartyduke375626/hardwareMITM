@@ -94,7 +94,7 @@ module MitmControl (
 	localparam STATE_RESET = 4'd8;
 	
 	// control logic
-	always @ (posedge sys_clk or posedge rst)
+	always @ (posedge sys_clk)
 	begin
 		// on reset go to reset state
 		if (rst == 1'b1) begin

@@ -4,6 +4,6 @@ This repository contains source files related to master thesis 'Hardware MITM at
 
 ## Directory structure:
 
-* **verilog/** - contains FPGA verilog code and build scripts
+* **code/** - contains FPGA verilog code and build scripts
 
 * **latex/** - contains latex source files

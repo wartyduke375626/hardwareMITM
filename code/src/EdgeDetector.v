@@ -23,7 +23,7 @@ module EdgeDetector # (
 	// internal registers
 	reg old_sig;
 
-	always @ (posedge sys_clk or posedge rst)
+	always @ (posedge sys_clk)
 	begin
 		// on reset clear output and equalize signals
 		if (rst == 1'b1) begin

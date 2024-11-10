@@ -28,7 +28,7 @@ module Debouncer #(
 	reg old_sig = 1'b0;
 	reg [CTR_SIZE-1:0] ctr;
 	
-	always @ (posedge sys_clk or posedge rst)
+	always @ (posedge sys_clk)
 	begin
 		// reset internal state
 		if (rst == 1'b1) begin

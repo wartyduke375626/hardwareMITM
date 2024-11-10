@@ -1,20 +1,6 @@
 IV_FLAGS=-DBENCH
 
 
-# run all simulations
-sim-all: \
-		$(SIM_DIR)/ClockGenerator_test.vcd \
-		$(SIM_DIR)/Debouncer_test.vcd \
-		$(SIM_DIR)/EdgeDetector_test.vcd \
-		$(SIM_DIR)/MitmControl_test.vcd \
-		$(SIM_DIR)/MitmLogic_test.vcd \
-		$(SIM_DIR)/OutputMux_test.vcd \
-		$(SIM_DIR)/ResetDebouncer_test.vcd \
-		$(SIM_DIR)/SerialReadBuffer_test.vcd \
-		$(SIM_DIR)/SerialWriteBuffer_test.vcd \
-		$(SIM_DIR)/Synchronizer_test.vcd;
-
-
 # Run simulation rule for each test
 $(SIM_DIR)/ClockGenerator_test.vcd: $(TEST_BUILD_DIR)/ClockGenerator_test | $(SIM_DIR)
 	(cd $(SIM_DIR) && exec vvp ../$<)

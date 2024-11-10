@@ -26,7 +26,6 @@ module TopLevelModule (
 
 	// local constants
 	localparam RST_DEBOUNCE_COUNT = 65536;
-	localparam DATA_SIZE = 8;
 	localparam BUS_WIDTH = 4;
 
 	// internal signals
@@ -40,14 +39,14 @@ module TopLevelModule (
 	
 	/******************** MODULE INSTANTIATION ********************/
 	
-	// PLL (120 MHz)
+	// PLL (48 MHz)
 	// specific module to iCE40 FPGAs
 	SB_PLL40_CORE #(
 		.FEEDBACK_PATH("SIMPLE"),	// don't use fine delay adjustment
 		.PLLOUT_SELECT("GENCLK"),	// no phase shift on output
 		.DIVR(4'b0000),				// reference clock divider
-		.DIVF(7'b1001111),			// feedback clock divider
-		.DIVQ(3'b011),				// VCO clock divider
+		.DIVF(7'b0111111),			// feedback clock divider
+		.DIVQ(3'b100),				// VCO clock divider
 		.FILTER_RANGE(3'b001)		// filter range
 	) pll (
 		.REFERENCECLK(ref_clk),		// input clock
@@ -72,15 +71,12 @@ module TopLevelModule (
 		.WIDTH(BUS_WIDTH)
 	) synchronizer (
 		.sys_clk(sys_clk),
-		.in_line({miso_in, mosi_in. sclk_in, ss_in}),
+		.in_line({miso_in, mosi_in, sclk_in, ss_in}),
 		.out_line({sync_miso_in, sync_mosi_in, sync_sclk_in, sync_ss_in})
 	);
 	
 	// MITM control module
-	MitmControl #(
-		.DATA_SIZE(DATA_SIZE),
-		.BUS_WIDTH(BUS_WIDTH)
-	) mitmControl (
+	MitmControl mitmControl (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.miso_in(sync_miso_in),

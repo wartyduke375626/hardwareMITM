@@ -45,20 +45,19 @@ module ClockGenerator_test();
 		sys_clk = ~sys_clk;
 	end
 	
-	// pulse reset line high at the begining
-	initial
-	begin
-		#10;
-		rst = 1'b1;
-		#1;
-		rst = 1'b0;
-	end
-	
 	// test code
 	initial
 	begin
 		// wait some time
 		#100;
+		
+		// send reset signal at the beginning
+		rst = 1'b1;
+		#(CLK_PERIOD_NS);
+		rst = 1'b0;
+	
+		// wait some time for initialization
+		#(2*CLK_PERIOD_NS);
 		
 		// send signal to start generating clock
 		start = 1'b1;
@@ -76,7 +75,7 @@ module ClockGenerator_test();
 		// generate random reset signal
 		#3172;
 		rst = 1'b1;
-		#1;
+		#(CLK_PERIOD_NS);
 		rst = 1'b0;
 		
 		// wait while clock generator is busy

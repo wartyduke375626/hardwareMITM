@@ -42,20 +42,19 @@ module EdgeDetector_test();
 		sys_clk = ~sys_clk;
 	end
 	
-	// pulse reset line high at the begining
-	initial
-	begin
-		#10;
-		rst = 1'b1;
-		#1;
-		rst = 1'b0;
-	end
-	
 	// test code
 	initial
 	begin
+		// wait some time
+		#100;
+		
+		// send reset signal at the beginning
+		rst = 1'b1;
+		#(CLK_PERIOD_NS);
+		rst = 1'b0;
+	
 		// wait some time for initialization
-		#1000
+		#(2*CLK_PERIOD_NS);
 		
 		// generate rising edge
 		sig = 1'b1;
@@ -73,7 +72,7 @@ module EdgeDetector_test();
 		sig = 1'b1;
 		#(CLK_PERIOD_NS * 6);
 		rst = 1'b1;
-		#1;
+		#(CLK_PERIOD_NS);
 		rst = 1'b0;
 		#(CLK_PERIOD_NS * 6);
 		sig = 1'b0;
@@ -84,7 +83,7 @@ module EdgeDetector_test();
 			// generate a random reset signal
 			if (i % 8 == 7) begin
 				rst = 1'b1;
-				#1
+				#(CLK_PERIOD_NS);
 				rst = 1'b0;
 			end
 			

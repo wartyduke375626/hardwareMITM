@@ -65,20 +65,19 @@ module SerialWriteBuffer_test();
 		sys_clk = ~sys_clk;
 	end
 	
-	// pulse reset line high at the begining
-	initial
-	begin
-		#10;
-		rst = 1'b1;
-		#1;
-		rst = 1'b0;
-	end
-	
 	// generate data output line clock
 	initial
 	begin
-		// wait some time before sending data
-		#2500
+		// wait some time
+		#100;
+		
+		// send reset signal at the beginning
+		rst = 1'b1;
+		#(CLK_PERIOD_NS);
+		rst = 1'b0;
+	
+		// wait some time for initialization
+		#(2*CLK_PERIOD_NS);
 		
 		// clock 8 bits of data
 		signal_data_out = 1'b1;
@@ -160,10 +159,10 @@ module SerialWriteBuffer_test();
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
 		
-		// pulse random reset signal
+		// generate random reset signal
 		#2929
 		rst = 1'b1;
-		#1;
+		#(CLK_PERIOD_NS);
 		rst = 1'b0;
 		
 		// wait for buffer to reset
