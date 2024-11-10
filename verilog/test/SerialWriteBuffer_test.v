@@ -14,11 +14,12 @@ module SerialWriteBuffer_test();
 	localparam DATA_OUT_CLK_PERIOD_NS = 8 * CLK_PERIOD_NS;	// data rate has to be slower then sys_clk
 	
 	localparam BUF_SIZE = 8;
+	localparam WRITE_COUNT_SIZE = $clog2(BUF_SIZE+1);
 	
 	// internal signals
 	wire data_out;
 	wire done_sig;
-	wire  write_sig;
+	wire write_sig;
 	
 	// internal registers
 	reg sys_clk = 1'b0;
@@ -27,6 +28,7 @@ module SerialWriteBuffer_test();
 	reg start = 1'b0;
 	reg [BUF_SIZE-1:0] data_in = 0;
 	reg signal_data_out = 1'b0;
+	reg [WRITE_COUNT_SIZE-1:0] write_count = 0;
 	
 	// helper variables
 	integer i;
@@ -51,6 +53,7 @@ module SerialWriteBuffer_test();
 		.start(start),
 		.write_sig(write_sig),
 		.data_in(data_in),
+		.write_count(write_count),
 		.data_out(data_out),
 		.done_sig(done_sig)
 	);
@@ -77,7 +80,7 @@ module SerialWriteBuffer_test();
 		// wait some time before sending data
 		#2500
 		
-		// send 8 bits of data
+		// clock 8 bits of data
 		signal_data_out = 1'b1;
 		#(DATA_OUT_CLK_PERIOD_NS);
 		for (i = 0; i < 8; i++)
@@ -94,10 +97,10 @@ module SerialWriteBuffer_test();
 		// wait random time
 		#(DATA_OUT_CLK_PERIOD_NS + 371);
 		
-		// send 8 bits of data
+		// clock 6 bits of data
 		signal_data_out = 1'b1;
 		#(DATA_OUT_CLK_PERIOD_NS);
-		for (i = 0; i < 8; i++)
+		for (i = 0; i < 6; i++)
 		begin
 			data_clk = 1'b0;
 			#(DATA_OUT_CLK_PERIOD_NS / 2);
@@ -111,10 +114,10 @@ module SerialWriteBuffer_test();
 		// wait random time
 		#(DATA_OUT_CLK_PERIOD_NS + 973);
 		
-		// send 8 bits of data
+		// clock 4 bits of data
 		signal_data_out = 1'b1;
 		#(DATA_OUT_CLK_PERIOD_NS);
-		for (i = 0; i < 8; i++)
+		for (i = 0; i < 4; i++)
 		begin
 			data_clk = 1'b0;
 			#(DATA_OUT_CLK_PERIOD_NS / 2);
@@ -132,10 +135,11 @@ module SerialWriteBuffer_test();
 		// wait for data sending signal
 		wait (signal_data_out == 1'b1);
 		
-		// set byte to write
+		// set 8 bits to write
 		data_in = 8'h9c;
 		
 		// send signal to start writing byte
+		write_count = 8;
 		start = 1'b1;
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
@@ -147,10 +151,11 @@ module SerialWriteBuffer_test();
 		wait (signal_data_out == 1'b0);
 		wait (signal_data_out == 1'b1);
 		
-		// set byte to write
-		data_in = 8'he4;
+		// set 6 bits to write
+		data_in = 6'o74 << 2;
 		
 		// send signal to start reading byte
+		write_count = 6;
 		start = 1'b1;
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
@@ -168,10 +173,11 @@ module SerialWriteBuffer_test();
 		wait (signal_data_out == 1'b0);
 		wait (signal_data_out == 1'b1);
 		
-		// set byte to write
-		data_in = 8'hb5;
+		// set 4 bits to write
+		data_in = 4'h5 << 4;
 		
-		// send signal to start reading byte 2
+		// send signal to start reading byte
+		write_count = 4;
 		start = 1'b1;
 		#(CLK_PERIOD_NS);
 		start = 1'b0;

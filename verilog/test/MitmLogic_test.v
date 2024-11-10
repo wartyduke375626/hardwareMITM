@@ -12,38 +12,43 @@ module MitmLogic_test();
 	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
 	localparam SIM_DURATION = 10_000;	// 10 us
 	
-	localparam DATA_SIZE = 8;
+	localparam MAX_DATA_SIZE = 9;
+	localparam DATA_SIZE_WIDTH = $clog2(MAX_DATA_SIZE+1);
 	
 	// internal signals
-	wire [DATA_SIZE-1:0] fake_miso_data;
-	wire [DATA_SIZE-1:0] fake_mosi_data;
+	wire [MAX_DATA_SIZE-1:0] fake_miso_data;
+	wire [MAX_DATA_SIZE-1:0] fake_mosi_data;
+	wire [DATA_SIZE_WIDTH-1:0] data_size;
 	wire fake_miso_select;
 	wire fake_mosi_select;
-	wire done_sig;
+	wire eval_done;
+	wire mitm_done;
 	
 	// internal registers
 	reg sys_clk = 1'b0;
 	reg rst = 1'b0;
 	reg eval = 1'b0;
+	reg mitm_start = 1'b0;
 	
-	reg [DATA_SIZE-1:0] real_miso_data;
-	reg [DATA_SIZE-1:0] real_mosi_data;
+	reg [MAX_DATA_SIZE-1:0] real_miso_data;
+	reg [MAX_DATA_SIZE-1:0] real_mosi_data;
 	
 
 	// instantiate uut
-	MitmLogic #(
-		.DATA_SIZE(DATA_SIZE)
-	) UUT (
+	MitmLogic UUT (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.eval(eval),
+		.mitm_start(mitm_start),
 		.real_miso_data(real_miso_data),
 		.real_mosi_data(real_mosi_data),
 		.fake_miso_data(fake_miso_data),
 		.fake_mosi_data(fake_mosi_data),
+		.data_size(data_size),
 		.fake_miso_select(fake_miso_select),
 		.fake_mosi_select(fake_mosi_select),
-		.done_sig(done_sig)
+		.eval_done(eval_done),
+		.mitm_done(mitm_done)
 	);
 	
 	// generate sys_clock signal
@@ -68,31 +73,68 @@ module MitmLogic_test();
 		// wait some time for initialization
 		#100;
 		
-		// set some input data
-		real_miso_data = 8'ha3;
-		real_mosi_data = 8'h01;
+		// wait for evaluation
+		wait (eval_done == 1'b1);
+		
+		// start MITM logic
+		mitm_start <= 1'b1;
+		#(CLK_PERIOD_NS);
+		mitm_start <= 1'b0;
+		
+		// wait for evaluation
+		wait (eval_done == 1'b1);
+		
+		// evaluate initial condition
+		eval = 1'b1;
+		#(CLK_PERIOD_NS);
+		eval = 1'b0;
+		#(CLK_PERIOD_NS);
+		
+		// wait for evaluation
+		wait (eval_done == 1'b1);
+		
+		// emulate communication data
+		real_miso_data = 9'd0;
+		real_mosi_data = {6'd0, 3'b110};	// read instruction
 		
 		// evaluate
 		eval = 1'b1;
 		#(CLK_PERIOD_NS);
 		eval = 1'b0;
+		#(CLK_PERIOD_NS);
 		
-		// wait for done signal
-		wait (done_sig == 1'b1);
+		// wait for evaluation
+		wait (eval_done == 1'b1);
 		
-		// set some input data
-		real_miso_data = 8'h40;
-		real_mosi_data = 8'hff;
+		// emulate communication data
+		real_miso_data = 9'd0;
+		real_mosi_data = {1'b0, 8'ha2};	// address operand
 		
 		// evaluate
 		eval = 1'b1;
 		#(CLK_PERIOD_NS);
 		eval = 1'b0;
+		#(CLK_PERIOD_NS);
 		
-		// wait for done signal
-		wait (done_sig == 1'b1);
+		// wait for evaluation
+		wait (eval_done == 1'b1);
 		
-		// wait some time to visualize
+		// emulate communication data
+		real_miso_data = {1'b0, 8'hd9};	// data read
+		real_mosi_data = 9'd0;
+		
+		// evaluate
+		eval = 1'b1;
+		#(CLK_PERIOD_NS);
+		eval = 1'b0;
+		#(CLK_PERIOD_NS);
+		
+		// wait for evaluation
+		wait (eval_done == 1'b1);
+		
+		// wait for MITM logic to end
+		wait (mitm_done == 1'b1);
+		
 		#100;
 	end
 	

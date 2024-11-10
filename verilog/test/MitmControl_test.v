@@ -13,8 +13,7 @@ module MitmControl_test();
 	localparam SIM_DURATION = 1_000_000;	// 1000 us
 	localparam DATA_CLK_PERIOD_NS = 20 * CLK_PERIOD_NS;	// data rate has to be slower then sys_clk
 	
-	localparam DATA_SIZE = 8;
-	localparam BUS_WIDTH = 4;
+	localparam READ_COMM_DATA_SIZE = 20;
 	
 	// internal signals
 	wire miso_out;
@@ -32,14 +31,11 @@ module MitmControl_test();
 	
 	// helper variables
 	integer i;
-	reg [DATA_SIZE-1:0] miso_data_to_send;
-	reg [DATA_SIZE-1:0] mosi_data_to_send;
+	reg [READ_COMM_DATA_SIZE-1:0] miso_data_to_send;
+	reg [READ_COMM_DATA_SIZE-1:0] mosi_data_to_send;
 	
 	// instantiate uut
-	MitmControl #(
-		.DATA_SIZE(DATA_SIZE),
-		.BUS_WIDTH(BUS_WIDTH)
-	) UUT (
+	MitmControl UUT (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.miso_in(miso_in),
@@ -75,16 +71,16 @@ module MitmControl_test();
 		#1371;
 		
 		
-		// generate some data on input lines:
-		miso_data_to_send = 8'h3a;
-		mosi_data_to_send = 8'he7;
+		// generate some 'read' communication on input lines
+		miso_data_to_send = {3'b0, 9'h0, 8'ha3};
+		mosi_data_to_send = {3'b110, 9'h09a, 8'h0};
 		
 		// rise edge on SS
 		ss_in = 1'b1;
 		#(DATA_CLK_PERIOD_NS);
 		
 		// send data clocked by SCLK
-		for (i = DATA_SIZE-1; i >= 0; i--) // send most significat bit first
+		for (i = READ_COMM_DATA_SIZE-1; i >= 0; i--) // send most significat bit first
 		begin
 			sclk_in = 1'b0;
 			miso_in = miso_data_to_send[i];
@@ -106,16 +102,16 @@ module MitmControl_test();
 		#(DATA_CLK_PERIOD_NS + 697);
 		
 		
-		// generate some data on input lines:
-		miso_data_to_send = 8'h29;
-		mosi_data_to_send = 8'hf1;
+		// generate some 'read' communication on input lines
+		miso_data_to_send = {3'b0, 9'h0, 8'hb5};
+		mosi_data_to_send = {3'b110, 9'h120, 8'h0};
 		
 		// rise edge on SS
 		ss_in = 1'b1;
 		#(DATA_CLK_PERIOD_NS);
 		
 		// send data clocked by SCLK
-		for (i = DATA_SIZE-1; i >= 0; i--) // send most significat bit first
+		for (i = READ_COMM_DATA_SIZE-1; i >= 0; i--) // send most significat bit first
 		begin
 			sclk_in = 1'b0;
 			miso_in = miso_data_to_send[i];
@@ -137,16 +133,16 @@ module MitmControl_test();
 		#(DATA_CLK_PERIOD_NS + 1223);
 		
 		
-		// generate some data on input lines:
-		miso_data_to_send = 8'h2b;
-		mosi_data_to_send = 8'ha5;
+		// generate some 'write' communication on input lines
+		miso_data_to_send = {3'b0, 9'h0, 8'h0};
+		mosi_data_to_send = {3'b101, 9'h037, 8'h6d};
 		
 		// rise edge on SS
 		ss_in = 1'b1;
 		#(DATA_CLK_PERIOD_NS);
 		
 		// send data clocked by SCLK
-		for (i = DATA_SIZE-1; i >= 0; i--) // send most significat bit first
+		for (i = READ_COMM_DATA_SIZE-1; i >= 0; i--) // send most significat bit first
 		begin
 			sclk_in = 1'b0;
 			miso_in = miso_data_to_send[i];

@@ -4,12 +4,7 @@
  * - sets and forwards control i/o between modules
 **/
 
-module MitmControl #(
-
-	// parameters
-	parameter DATA_SIZE = 8,
-	parameter BUS_WIDTH = 4
-) (
+module MitmControl (
 	
 	// system inputs
 	input wire sys_clk,
@@ -27,6 +22,11 @@ module MitmControl #(
 	output wire sclk_out,
 	output wire ss_out
 );
+
+	// local constants
+	localparam BUS_WIDTH = 4;
+	localparam MAX_DATA_SIZE = 9;
+	localparam DATA_SIZE_WIDTH = $clog2(MAX_DATA_SIZE+1);	// storing A requires exactly ceil(lg(A+1)) bits
 	
 	// internal signals
 	
@@ -38,16 +38,18 @@ module MitmControl #(
 	wire ss_fall_edge;
 	
 	// data lines
-	wire [DATA_SIZE-1:0] real_miso_data;
-	wire [DATA_SIZE-1:0] real_mosi_data;
+	wire [MAX_DATA_SIZE-1:0] real_miso_data;
+	wire [MAX_DATA_SIZE-1:0] real_mosi_data;
 	
-	wire [DATA_SIZE-1:0] fake_miso_data;
-	wire [DATA_SIZE-1:0] fake_mosi_data;
+	wire [MAX_DATA_SIZE-1:0] fake_miso_data;
+	wire [MAX_DATA_SIZE-1:0] fake_mosi_data;
 	
 	wire fake_miso_out;
 	wire fake_mosi_out;
 	
 	// data control
+	wire [DATA_SIZE_WIDTH-1:0] data_size;
+	
 	wire fake_miso_select;
 	wire fake_mosi_select;
 	
@@ -61,6 +63,7 @@ module MitmControl #(
 	assign comm_done = miso_read_done & mosi_read_done & miso_write_done & mosi_write_done;
 	
 	wire mitm_logic_done;
+	wire mitm_logic_eval_done;
 	
 	// internal registers
 	
@@ -75,17 +78,20 @@ module MitmControl #(
 	// control
 	reg comm_start = 1'b0;
 	reg mitm_eval = 1'b0;
+	reg mitm_start = 1'b0;
 	
-	reg	[2:0] state = STATE_RESET;
+	reg	[3:0] state = STATE_RESET;
 	
 	// states
-	localparam STATE_IDLE = 3'd0;
-	localparam STATE_COMM_START = 3'd1;
-	localparam STATE_COMM = 3'd2;
-	localparam STATE_MITM_START = 3'd3;
-	localparam STATE_MITM = 3'd4;
-	localparam STATE_DONE = 3'd5;
-	localparam STATE_RESET = 3'd6;
+	localparam STATE_IDLE = 4'd0;
+	localparam STATE_MITM_START = 4'd1;
+	localparam STATE_MITM_CYCLE = 4'd2;
+	localparam STATE_MITM_EVAL_START = 4'd3;
+	localparam STATE_MITM_EVAL = 4'd4;
+	localparam STATE_COMM_START = 4'd5;
+	localparam STATE_COMM = 4'd6;
+	localparam STATE_DONE = 4'd7;
+	localparam STATE_RESET = 4'd8;
 	
 	// control logic
 	always @ (posedge sys_clk or posedge rst)
@@ -99,42 +105,63 @@ module MitmControl #(
 			// state transition logic
 			case (state)
 				
-				// in idle state wait for SS rising edge and signal communication buffering start
+				// in idle state wait for SS rising edge and signal MITM logic to start
 				STATE_IDLE: begin
 					if (ss_rise_edge == 1'b1) begin
-						comm_start <= 1'b1;
-						state <= STATE_COMM_START;
+						mitm_start <= 1'b1;
+						state <= STATE_MITM_START;
+					end
+				end
+				
+				// delay one clock cycle for MITM logic to start
+				STATE_MITM_START: begin
+					mitm_start <= 1'b0;
+					state <= STATE_MITM_CYCLE;
+				end
+				
+				// start of MITM communication segment -- signal MITM to evaluate data and go to next state
+				STATE_MITM_CYCLE: begin
+					mitm_eval <= 1'b1;
+					state <= STATE_MITM_EVAL_START;
+				end
+				
+				// delay one clock cycle for MITM logic to start evaluating
+				STATE_MITM_EVAL_START: begin
+					mitm_eval <= 1'b0;
+					state <= STATE_MITM_EVAL;
+				end
+				
+				// MITM logic evaluation state -- wait for MITM logic to process data
+				STATE_MITM_EVAL: begin
+					if (mitm_logic_eval_done == 1'b1) begin
+					
+						// if MITM logic signals done, go to done state
+						if (mitm_logic_done == 1'b1) begin
+							state <= STATE_DONE;
+						end
+						
+						// else signal communication buffering start
+						else begin
+							comm_start <= 1'b1;
+							state <= STATE_COMM_START;
+						end
 					end
 				end
 				
 				// delay one clock cycle for communication buffering to start
 				STATE_COMM_START: begin
+					comm_start <= 1'b0;
 					state <= STATE_COMM;
 				end
 				
-				// communication buffering state -- wait for data to be transfered and signal mitm evaluation
+				// communication buffering state -- wait for data to be transfered and go to next MITM cycle
 				STATE_COMM: begin
-					comm_start <= 1'b0;
 					if (comm_done == 1'b1) begin
-						mitm_eval <= 1'b1;
-						state <= STATE_MITM_START;
+						state <= STATE_MITM_CYCLE;
 					end
 				end
 				
-				// delay one clock cycle for mitm logic to start evaluating
-				STATE_MITM_START: begin
-					state <= STATE_MITM;
-				end
-				
-				// MITM logic state -- wait for MITM logic to process inputs and go to done state
-				STATE_MITM: begin
-					mitm_eval <= 1'b0;
-					if (mitm_logic_done == 1'b1) begin
-						state <= STATE_DONE;
-					end
-				end
-				
-				// prepare for next iteration -- wait for SS falling edge
+				// prepare for next communication -- wait for SS falling edge
 				STATE_DONE: begin
 					if (ss_fall_edge == 1'b1) begin
 						state <= STATE_IDLE;
@@ -145,6 +172,7 @@ module MitmControl #(
 				STATE_RESET: begin
 					comm_start <= 1'b0;
 					mitm_eval <= 1'b0;
+					mitm_start <= 1'b0;
 	
 					fake_sclk_out <= 1'b0;
 					fake_ss_out <= 1'b0;
@@ -205,71 +233,76 @@ module MitmControl #(
 	
 	// MISO read buffer
 	SerialReadBuffer #(
-		.BUF_SIZE(DATA_SIZE)
+		.BUF_SIZE(MAX_DATA_SIZE)
 	) misoReadBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.start(comm_start),
 		.read_sig(sclk_rise_edge),
 		.data_in(miso_in),
+		.read_count(data_size),
 		.data_out(real_miso_data),
 		.done_sig(miso_read_done)
 	);
 	
 	// MOSI read buffer
 	SerialReadBuffer #(
-		.BUF_SIZE(DATA_SIZE)
+		.BUF_SIZE(MAX_DATA_SIZE)
 	) mosiReadBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.start(comm_start),
 		.read_sig(sclk_rise_edge),
 		.data_in(mosi_in),
+		.read_count(data_size),
 		.data_out(real_mosi_data),
 		.done_sig(mosi_read_done)
 	);
 	
 	// MISO write buffer
 	SerialWriteBuffer #(
-		.BUF_SIZE(DATA_SIZE)
+		.BUF_SIZE(MAX_DATA_SIZE)
 	) misoWriteBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.start(comm_start),
 		.write_sig(sclk_fall_edge),
 		.data_in(fake_miso_data),
+		.write_count(data_size),
 		.data_out(fake_miso_out),
 		.done_sig(miso_write_done)
 	);
 	
 	// MOSI write buffer
 	SerialWriteBuffer #(
-		.BUF_SIZE(DATA_SIZE)
+		.BUF_SIZE(MAX_DATA_SIZE)
 	) mosiWriteBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.start(comm_start),
 		.write_sig(sclk_fall_edge),
 		.data_in(fake_mosi_data),
+		.write_count(data_size),
 		.data_out(fake_mosi_out),
 		.done_sig(mosi_write_done)
 	);
 	
 	
 	// MITM logic
-	MitmLogic #(
-		.DATA_SIZE(DATA_SIZE)
-	) mitmLogic (
+	MitmLogic mitmLogic (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.eval(mitm_eval),
+		.mitm_start(mitm_start),
 		.real_miso_data(real_miso_data),
 		.real_mosi_data(real_mosi_data),
 		.fake_miso_data(fake_miso_data),
 		.fake_mosi_data(fake_mosi_data),
+		.data_size(data_size),
 		.fake_miso_select(fake_miso_select),
 		.fake_mosi_select(fake_mosi_select),
-		.done_sig(mitm_logic_done)
+		.eval_done(mitm_logic_eval_done),
+		.mitm_done(mitm_logic_done)
 	);
 	
 	

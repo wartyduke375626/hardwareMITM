@@ -14,6 +14,7 @@ module SerialReadBuffer_test();
 	localparam DATA_IN_CLK_PERIOD_NS = 8 * CLK_PERIOD_NS;	// data rate has to be slower then sys_clk
 	
 	localparam BUF_SIZE = 8;
+	localparam READ_COUNT_SIZE = $clog2(BUF_SIZE+1);
 	
 	// internal signals
 	wire [BUF_SIZE-1:0] data_out;
@@ -27,6 +28,7 @@ module SerialReadBuffer_test();
 	reg start = 1'b0;
 	reg data_in = 1'b0;
 	reg signal_data_in = 1'b0;
+	reg [READ_COUNT_SIZE-1:0] read_count = 0;
 	
 	// helper variables
 	integer i;
@@ -51,6 +53,7 @@ module SerialReadBuffer_test();
 		.start(start),
 		.read_sig(read_sig),
 		.data_in(data_in),
+		.read_count(read_count),
 		.data_out(data_out),
 		.done_sig(done_sig)
 	);
@@ -81,7 +84,7 @@ module SerialReadBuffer_test();
 		data_to_send = 8'h3a; // byte to send is indexed as msb
 		signal_data_in = 1'b1;
 		#(DATA_IN_CLK_PERIOD_NS);
-		for (i = BUF_SIZE-1; i >= 0; i--) // send most significat bit first
+		for (i = 7; i >= 0; i--) // send most significat bit first
 		begin
 			data_clk = 1'b0;
 			data_in = data_to_send[i];
@@ -97,11 +100,11 @@ module SerialReadBuffer_test();
 		// wait random time
 		#(DATA_IN_CLK_PERIOD_NS + 517);
 		
-		// send 8 bits of data
-		data_to_send = 8'h71; // byte to send is indexed as msb
+		// send 6 bits of data
+		data_to_send = 6'o52; // byte to send is indexed as msb
 		signal_data_in = 1'b1;
 		#(DATA_IN_CLK_PERIOD_NS);
-		for (i = BUF_SIZE-1; i >= 0; i--) // send most significat bit first
+		for (i = 5; i >= 0; i--) // send most significat bit first
 		begin
 			data_clk = 1'b0;
 			data_in = data_to_send[i];
@@ -117,11 +120,11 @@ module SerialReadBuffer_test();
 		// wait random time
 		#(DATA_IN_CLK_PERIOD_NS + 1119);
 		
-		// send 8 bits of data
-		data_to_send = 8'hf0; // byte to send is indexed as msb
+		// send 4 bits of data
+		data_to_send = 4'hf; // byte to send is indexed as msb
 		signal_data_in = 1'b1;
 		#(DATA_IN_CLK_PERIOD_NS);
-		for (i = BUF_SIZE-1; i >= 0; i--) // send most significat bit first
+		for (i = 3; i >= 0; i--) // send most significat bit first
 		begin
 			data_clk = 1'b0;
 			data_in = data_to_send[i];
@@ -142,6 +145,7 @@ module SerialReadBuffer_test();
 		wait (signal_data_in == 1'b1);
 		
 		// send signal to start reading byte
+		read_count = 8;
 		start = 1'b1;
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
@@ -154,6 +158,7 @@ module SerialReadBuffer_test();
 		wait (signal_data_in == 1'b1);
 		
 		// send signal to start reading byte
+		read_count = 6;
 		start = 1'b1;
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
@@ -171,7 +176,8 @@ module SerialReadBuffer_test();
 		wait (signal_data_in == 1'b0);
 		wait (signal_data_in == 1'b1);
 		
-		// send signal to start reading byte 2
+		// send signal to start reading byte
+		read_count = 4;
 		start = 1'b1;
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
