@@ -1,11 +1,11 @@
 # Compiled verilog files
-code/build/
+code/verilog/build/
 
 # Generated simulation files (.vcd)
-code/sim/
+code/verilog/sim/
 
 # Generated report files
-code/report/
+code/verilog/report/
 
 # Web files
 web/
