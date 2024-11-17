@@ -1,3 +1,6 @@
+## Description
+This directory contains FPGA code and related scripts.
+
 ## Directory structure
 
 * **src/** - dVerilog source code of all modules and PCF files for different FPGAs
@@ -6,7 +9,7 @@
 
 * **docs/** - various documentation files (module diagrams, etc.)
 
-## Required tools
+## Dependencies
 
 * **ICARUS Verilog**: https://github.com/steveicarus/iverilog
 
