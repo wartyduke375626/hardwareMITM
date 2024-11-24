@@ -1,11 +1,11 @@
 /**
- * Simulation of Debouncer module.
+ * Simulation of Signal debouncer module.
 **/
 
 // define timescale
 `timescale 1 ns / 10 ps
 
-module Debouncer_test();
+module SignalDebouncer_test();
 
 	// local constants
 	localparam SYS_CLK = 12_000_000;	// 12 MHz
@@ -13,25 +13,27 @@ module Debouncer_test();
 	localparam SIM_DURATION = 50_000;	// 50 us
 	
 	localparam DEBOUNCE_COUNT = 16;
+	localparam IN_ACTIVE_LOW = 1;
+	localparam OUT_ACTIVE_LOW = 0;
 	
 	// internal signals
 	wire out_sig;
 	
 	// internal registers
 	reg sys_clk = 1'b0;
-	reg rst = 1'b0;
-	reg in_sig = 1'b0;
+	reg in_sig = 1'b1;
 	
 	// helper variables
 	integer i;
 	integer n;
 	
 	// instantiate uut
-	Debouncer #(
-		.DEBOUNCE_COUNT(DEBOUNCE_COUNT)
+	SignalDebouncer #(
+		.DEBOUNCE_COUNT(DEBOUNCE_COUNT),
+		.IN_ACTIVE_LOW(IN_ACTIVE_LOW),
+		.OUT_ACTIVE_LOW(OUT_ACTIVE_LOW)
 	) UUT (
 		.sys_clk(sys_clk),
-		.rst(rst),
 		.in_sig(in_sig),
 		.out_sig(out_sig)
 	);
@@ -46,29 +48,8 @@ module Debouncer_test();
 	// test code
 	initial
 	begin
-		// wait some time
-		#100;
-		
-		// send reset signal at the beginning
-		rst = 1'b1;
-		#(CLK_PERIOD_NS);
-		rst = 1'b0;
-	
 		// wait some time for initialization
-		#(2*CLK_PERIOD_NS);
-		
-		// generate noisy random signal bounces
-		n = $urandom % 50;
-		for (i = 0; i < n; i++)
-		begin
-			in_sig = ~in_sig;
-			#($urandom % 100);
-		end
-		// set real signal value
-		in_sig = 1'b1;
-		
-		// wait some time for next signal
-		#10_000;
+		#1000;
 		
 		// generate noisy random signal bounces
 		n = $urandom % 50;
@@ -81,7 +62,7 @@ module Debouncer_test();
 		in_sig = 1'b0;
 		
 		// wait some time for next signal
-		#10_000;
+		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 500);
 		
 		// generate noisy random signal bounces
 		n = $urandom % 50;
@@ -94,7 +75,7 @@ module Debouncer_test();
 		in_sig = 1'b1;
 		
 		// wait some time for next signal
-		#10_000;
+		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 500);
 		
 		// generate noisy random signal bounces
 		n = $urandom % 50;
@@ -105,6 +86,19 @@ module Debouncer_test();
 		end
 		// set real signal value
 		in_sig = 1'b0;
+		
+		// wait some time for next signal
+		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 500);
+		
+		// generate noisy random signal bounces
+		n = $urandom % 50;
+		for (i = 0; i < n; i++)
+		begin
+			in_sig = ~in_sig;
+			#($urandom % 100);
+		end
+		// set real signal value
+		in_sig = 1'b1;
 	end
 	
 	// run simulation (output to .vcd file)
@@ -112,8 +106,8 @@ module Debouncer_test();
 	begin
 		
 		// create simulation output file
-		$dumpfile("Debouncer_test.vcd");
-		$dumpvars(0, Debouncer_test);
+		$dumpfile("SignalDebouncer_test.vcd");
+		$dumpvars(0, SignalDebouncer_test);
 		
 		// wait for simulation to complete
 		#(SIM_DURATION);

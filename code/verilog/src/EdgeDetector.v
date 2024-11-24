@@ -5,7 +5,7 @@
  * - when FALL_EDGE parameter is set detects falling edges instead
 **/
 
-module EdgeDetector # (
+module EdgeDetector #(
 
 	// parameters
 	parameter FALL_EDGE = 0

@@ -3,17 +3,27 @@
 #
 
 # system inputs
-set_io             	    ref_clk     21
-set_io  -pullup yes     rst_btn     44
+set_io                  ref_clk         21
+
+# user inputs
+set_io  -pullup yes     rst_btn         119
+set_io  -pullup yes     mode_btn        118
+
+# user outputs
+set_io                  mode_leds[0]    99
+set_io                  mode_leds[1]    98
+set_io                  comm_active_led 95
+set_io                  unused_leds[0]  97
+set_io                  unused_leds[1]  96
 
 # bus inputs
-set_io                  miso_in     78
-set_io                  mosi_in     88
-set_io                  sclk_in     90
-set_io                  ss_in       91
+set_io                  miso_in     81
+set_io                  mosi_in     90
+set_io                  sclk_in     88
+set_io                  ss_in       87
 
 # bus outputs
-set_io                  miso_out    87
-set_io                  mosi_out    79
-set_io                  sclk_out    80
-set_io                  ss_out      81
+set_io                  miso_out    91
+set_io                  mosi_out    80
+set_io                  sclk_out    79
+set_io                  ss_out      78

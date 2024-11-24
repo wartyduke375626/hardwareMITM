@@ -7,7 +7,7 @@
  * - !! the DIV_FACTOR parameter must be even !!
 **/
 
-module ClockGenerator # (
+module ClockGenerator #(
 
 	// parameters
 	parameter DIV_FACTOR = 12,

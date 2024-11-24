@@ -5,7 +5,7 @@
  * - the inputs, outputs and selector bits are organized in WIDTH wide lines
 **/
 
-module OutputMux # (
+module OutputMux #(
 
 	// parameters
 	parameter WIDTH = 4

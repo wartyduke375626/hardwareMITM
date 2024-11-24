@@ -6,7 +6,7 @@
  * - the read signal must be synchronous to the system clock
 **/
 
-module SerialReadBuffer # (
+module SerialReadBuffer #(
 
 	// parameters
 	parameter BUF_SIZE = 8

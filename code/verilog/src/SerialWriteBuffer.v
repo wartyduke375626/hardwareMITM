@@ -9,7 +9,7 @@
  * - the write signal must be synchronous to the system clock
 **/
 
-module SerialWriteBuffer # (
+module SerialWriteBuffer #(
 
 	// parameters
 	parameter BUF_SIZE = 8

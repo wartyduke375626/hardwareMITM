@@ -10,45 +10,64 @@ module MitmLogic_test();
 	// local constants
 	localparam SYS_CLK = 12_000_000;	// 12 MHz
 	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
-	localparam SIM_DURATION = 10_000;	// 10 us
+	localparam SIM_DURATION = 30_000;	// 30 us
 	
-	localparam MAX_DATA_SIZE = 9;
-	localparam DATA_SIZE_WIDTH = $clog2(MAX_DATA_SIZE+1);
+	localparam BUF_SIZE = 9;
+	localparam CHUNK_SIZE_WIDTH = $clog2(BUF_SIZE+1);
+	
+	localparam MODE_WIDTH = 2;
+	localparam MITM_MODE_FORWARD = 2'b01;
+	localparam MITM_MODE_SUB_ALL = 2'b10;
 	
 	// internal signals
-	wire [MAX_DATA_SIZE-1:0] fake_miso_data;
-	wire [MAX_DATA_SIZE-1:0] fake_mosi_data;
-	wire [DATA_SIZE_WIDTH-1:0] data_size;
+	wire cmd_next_chunk;
+	wire cmd_finish;
+	wire [CHUNK_SIZE_WIDTH-1:0] next_chunk_size;
+	
 	wire fake_miso_select;
 	wire fake_mosi_select;
-	wire eval_done;
-	wire mitm_done;
+	
+	wire [BUF_SIZE-1:0] fake_miso_data;
+	wire [BUF_SIZE-1:0] fake_mosi_data;
 	
 	// internal registers
 	reg sys_clk = 1'b0;
 	reg rst = 1'b0;
-	reg eval = 1'b0;
-	reg mitm_start = 1'b0;
+	reg [MODE_WIDTH-1:0] mode_select = MITM_MODE_FORWARD;
+
+	reg comm_active = 1'b0;
+	reg bus_ready = 1'b1;
 	
-	reg [MAX_DATA_SIZE-1:0] real_miso_data;
-	reg [MAX_DATA_SIZE-1:0] real_mosi_data;
-	
+	reg [BUF_SIZE-1:0] real_miso_data;
+	reg [BUF_SIZE-1:0] real_mosi_data;
 
 	// instantiate uut
-	MitmLogic UUT (
+	MitmLogic #( 
+		.BUF_SIZE(BUF_SIZE),
+		
+		.MODE_WIDTH(MODE_WIDTH),
+		.MITM_MODE_FORWARD(MITM_MODE_FORWARD),
+		.MITM_MODE_SUB_ALL(MITM_MODE_SUB_ALL)
+	) UUT (
 		.sys_clk(sys_clk),
 		.rst(rst),
-		.eval(eval),
-		.mitm_start(mitm_start),
+		.mode_select(mode_select),
+		
+		.comm_active(comm_active),
+		.bus_ready(bus_ready),
+		
 		.real_miso_data(real_miso_data),
 		.real_mosi_data(real_mosi_data),
-		.fake_miso_data(fake_miso_data),
-		.fake_mosi_data(fake_mosi_data),
-		.data_size(data_size),
+		
+		.cmd_next_chunk(cmd_next_chunk),
+		.cmd_finish(cmd_finish),
+		
+		.next_chunk_size(next_chunk_size),
 		.fake_miso_select(fake_miso_select),
 		.fake_mosi_select(fake_mosi_select),
-		.eval_done(eval_done),
-		.mitm_done(mitm_done)
+		
+		.fake_miso_data(fake_miso_data),
+		.fake_mosi_data(fake_mosi_data)
 	);
 	
 	// generate sys_clock signal
@@ -72,69 +91,170 @@ module MitmLogic_test();
 		// wait some time for initialization
 		#(2*CLK_PERIOD_NS);
 		
-		// wait for evaluation
-		wait (eval_done == 1'b1);
+		// set mode to 'forward'
+		mode_select = MITM_MODE_FORWARD;
 		
-		// start MITM logic
-		mitm_start <= 1'b1;
-		#(CLK_PERIOD_NS);
-		mitm_start <= 1'b0;
+		// simulate receival of read communication through Bus control interface
 		
-		// wait for evaluation
-		wait (eval_done == 1'b1);
+		// signal communication active
+		comm_active = 1'b1;
 		
-		// evaluate initial condition
-		eval = 1'b1;
-		#(CLK_PERIOD_NS);
-		eval = 1'b0;
-		#(CLK_PERIOD_NS);
+		// wait for next chunk command
+		wait (cmd_next_chunk == 1'b1);
 		
-		// wait for evaluation
-		wait (eval_done == 1'b1);
+		bus_ready = 1'b0;
 		
-		// emulate communication data
-		real_miso_data = 9'd0;
-		real_mosi_data = {6'd0, 3'b110};	// read instruction
+		// simulate read instruction return
+		real_miso_data = 9'b0;
+		real_mosi_data = {6'b0, 3'b110};
 		
-		// evaluate
-		eval = 1'b1;
-		#(CLK_PERIOD_NS);
-		eval = 1'b0;
-		#(CLK_PERIOD_NS);
+		// wait some time
+		#(4*CLK_PERIOD_NS);
 		
-		// wait for evaluation
-		wait (eval_done == 1'b1);
+		// signal ready
+		bus_ready = 1'b1;
 		
-		// emulate communication data
-		real_miso_data = 9'd0;
-		real_mosi_data = {1'b0, 8'ha2};	// address operand
+		// wait for next chunk command
+		wait (cmd_next_chunk == 1'b1);
 		
-		// evaluate
-		eval = 1'b1;
-		#(CLK_PERIOD_NS);
-		eval = 1'b0;
-		#(CLK_PERIOD_NS);
+		bus_ready = 1'b0;
 		
-		// wait for evaluation
-		wait (eval_done == 1'b1);
+		// simulate address return
+		real_miso_data = 9'b0;
+		real_mosi_data = 9'h14a;
 		
-		// emulate communication data
-		real_miso_data = {1'b0, 8'hd9};	// data read
-		real_mosi_data = 9'd0;
+		// wait some time
+		#(4*CLK_PERIOD_NS);
 		
-		// evaluate
-		eval = 1'b1;
-		#(CLK_PERIOD_NS);
-		eval = 1'b0;
-		#(CLK_PERIOD_NS);
+		// signal ready
+		bus_ready = 1'b1;
 		
-		// wait for evaluation
-		wait (eval_done == 1'b1);
+		// wait for finish command
+		wait (cmd_finish == 1'b1);
 		
-		// wait for MITM logic to end
-		wait (mitm_done == 1'b1);
+		bus_ready = 1'b0;
 		
-		#100;
+		// simulate data return
+		real_miso_data = 8'b0;
+		real_mosi_data = 8'haa;
+		
+		// wait some time
+		#(4*CLK_PERIOD_NS);
+		
+		// signal ready
+		bus_ready = 1'b1;
+		
+		// signal communication done
+		comm_active = 1'b0;
+		
+		// wait some time
+		#(4*CLK_PERIOD_NS);
+		
+		
+		// set mode to 'sub_all'
+		mode_select = MITM_MODE_SUB_ALL;
+		
+		// simulate receival of read communication through Bus control interface
+		
+		// signal communication active
+		comm_active = 1'b1;
+		
+		// wait for next chunk command
+		wait (cmd_next_chunk == 1'b1);
+		
+		bus_ready = 1'b0;
+		
+		// simulate read instruction return
+		real_miso_data = 9'b0;
+		real_mosi_data = {6'b0, 3'b110};
+		
+		// wait some time
+		#(4*CLK_PERIOD_NS);
+		
+		// signal ready
+		bus_ready = 1'b1;
+		
+		// wait for next chunk command
+		wait (cmd_next_chunk == 1'b1);
+		
+		bus_ready = 1'b0;
+		
+		// simulate address return
+		real_miso_data = 9'b0;
+		real_mosi_data = 9'h14a;
+		
+		// wait some time
+		#(4*CLK_PERIOD_NS);
+		
+		// signal ready
+		bus_ready = 1'b1;
+		
+		// wait for next chunk command
+		wait (cmd_next_chunk == 1'b1);
+		
+		bus_ready = 1'b0;
+		
+		// simulate data return
+		real_miso_data = 8'b0;
+		real_mosi_data = 8'haa;
+		
+		// wait some time
+		#(4*CLK_PERIOD_NS);
+		
+		// signal ready
+		bus_ready = 1'b1;
+		
+		// wait for finish command
+		wait (cmd_finish == 1'b1);
+		
+		bus_ready = 1'b0;
+		
+		// wait some time
+		#(2*CLK_PERIOD_NS);
+		
+		// signal ready
+		bus_ready = 1'b1;
+		
+		// signal communication done
+		comm_active = 1'b0;
+		
+		// wait some time
+		#(4*CLK_PERIOD_NS);
+		
+		
+		// simulate receival of write communication through Bus control interface
+		
+		// signal communication active
+		comm_active = 1'b1;
+		
+		// wait for next chunk command
+		wait (cmd_next_chunk == 1'b1);
+		
+		bus_ready = 1'b0;
+		
+		// simulate write instruction return
+		real_miso_data = 9'b0;
+		real_mosi_data = {6'b0, 3'b101};
+		
+		// wait some time
+		#(4*CLK_PERIOD_NS);
+		
+		// signal ready
+		bus_ready = 1'b1;
+		
+		// wait for finish command
+		wait (cmd_finish == 1'b1);
+		
+		bus_ready = 1'b0;
+		
+		// wait some time
+		#(6*CLK_PERIOD_NS);
+		
+		// signal ready
+		bus_ready = 1'b1;
+		
+		// signal communication done
+		comm_active = 1'b0;
 	end
 	
 	// run simulation (output to .vcd file)

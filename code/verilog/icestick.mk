@@ -20,8 +20,8 @@ $(BUILD_DIR)/icestick.bin: $(BUILD_DIR)/icestick.asc
 $(BUILD_DIR)/icestick.asc: $(BUILD_DIR)/icestick.json $(SRC_DIR)/icestick.pcf | $(BUILD_DIR)
 	nextpnr-ice40 $(NEXTPNR_FLAGS) --json $< --pcf $(SRC_DIR)/icestick.pcf --asc $@
 
-$(BUILD_DIR)/icestick.json: $(SRC_DIR)/TopLevelModule.v $(SRC_DIR)/MitmControl.v \
-		$(SRC_DIR)/EdgeDetector.v $(SRC_DIR)/MitmLogic.v $(SRC_DIR)/OutputMux.v \
-		$(SRC_DIR)/ResetDebouncer.v $(SRC_DIR)/SerialReadBuffer.v $(SRC_DIR)/SerialWriteBuffer.v \
-		$(SRC_DIR)/Synchronizer.v | $(BUILD_DIR)
+$(BUILD_DIR)/icestick.json: $(SRC_DIR)/TopLevelModule.v $(SRC_DIR)/BusControl.v \
+		$(SRC_DIR)/EdgeDetector.v $(SRC_DIR)/IoHandler.v $(SRC_DIR)/MitmLogic.v \
+		$(SRC_DIR)/OutputMux.v $(SRC_DIR)/SerialReadBuffer.v $(SRC_DIR)/SerialWriteBuffer.v \
+		$(SRC_DIR)/SignalDebouncer.v $(SRC_DIR)/Synchronizer.v | $(BUILD_DIR)
 	yosys $(YOSYS_FLAGS) "$(YOSYS_CMD) -top TopLevelModule -json $@" $^

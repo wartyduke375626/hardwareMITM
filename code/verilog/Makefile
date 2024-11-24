@@ -26,16 +26,17 @@ bin: $(BUILD_DIR)/icestick.bin
 
 # Run all simulations
 simulate: \
+		$(SIM_DIR)/BusControl_test.vcd \
 		$(SIM_DIR)/ClockGenerator_test.vcd \
-		$(SIM_DIR)/Debouncer_test.vcd \
 		$(SIM_DIR)/EdgeDetector_test.vcd \
-		$(SIM_DIR)/MitmControl_test.vcd \
+		$(SIM_DIR)/IoHandler_test.vcd \
 		$(SIM_DIR)/MitmLogic_test.vcd \
 		$(SIM_DIR)/OutputMux_test.vcd \
-		$(SIM_DIR)/ResetDebouncer_test.vcd \
 		$(SIM_DIR)/SerialReadBuffer_test.vcd \
 		$(SIM_DIR)/SerialWriteBuffer_test.vcd \
-		$(SIM_DIR)/Synchronizer_test.vcd;
+		$(SIM_DIR)/SignalDebouncer_test.vcd \
+		$(SIM_DIR)/Synchronizer_test.vcd \
+		$(SIM_DIR)/TopLevelModule_test.vcd;
 
 
 # Create directories
