@@ -39,7 +39,6 @@ module SerialReadBuffer_test();
 		.FALL_EDGE(0)
 	) dataInDetect (
 		.sys_clk(sys_clk),
-		.rst(rst),
 		.sig(data_clk),
 		.edge_sig(read_sig)
 	);

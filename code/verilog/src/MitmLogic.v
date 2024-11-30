@@ -113,6 +113,11 @@ module MitmLogic #(
 							state <= STATE_FINISH_START;
 						end
 					end
+					
+					// if communication was killed, finish
+					else if (comm_active == 1'b0) begin
+						state <= STATE_FINISH;
+					end
 				end
 				
 				// delay one clock cycle for bus control to process inputs
@@ -135,7 +140,7 @@ module MitmLogic #(
 								state <= STATE_FINISH_START;
 							end
 							
-							// substitute all mode -- substitute all data for the constant 0x24
+							// substitute all mode -- substitute all data with the constant 0x24
 							MITM_MODE_SUB_ALL: begin
 								next_chunk_size <= 8;
 								fake_miso_data <= 8'h24 << (BUF_SIZE - 8); // write buffers operate from most significant bit
@@ -143,8 +148,40 @@ module MitmLogic #(
 								cmd_next_chunk <= 1'b1;
 								state <= STATE_DATA_START;
 							end
+							
+							// substitute every second mode -- substitute every second address data with the constant 0x24
+							MITM_MODE_SUB_HALF: begin
+							
+								// address is even
+								if (real_mosi_data[0] == 1'b0) begin
+									next_chunk_size <= 0;
+									cmd_finish <= 1'b1;
+									state <= STATE_FINISH_START;
+								end
+								
+								// address is odd
+								else begin
+									next_chunk_size <= 8;
+									fake_miso_data <= 8'h24 << (BUF_SIZE - 8); // write buffers operate from most significant bit
+									fake_miso_select <= 1'b1;
+									cmd_next_chunk <= 1'b1;
+									state <= STATE_DATA_START;
+								end
+							end
+							
+							// if no mode is selected, default is forward mode
+							default: begin
+								next_chunk_size <= 0;
+								cmd_finish <= 1'b1;
+								state <= STATE_FINISH_START;
+							end
 						
 						endcase
+					end
+					
+					// if communication was killed, finish
+					else if (comm_active == 1'b0) begin
+						state <= STATE_FINISH;
 					end
 				end
 				
@@ -159,6 +196,11 @@ module MitmLogic #(
 					if (bus_ready == 1'b1) begin
 						cmd_finish <= 1'b1;
 						state <= STATE_FINISH_START;
+					end
+					
+					// if communication was killed, finish
+					else if (comm_active == 1'b0) begin
+						state <= STATE_FINISH;
 					end
 				end
 				

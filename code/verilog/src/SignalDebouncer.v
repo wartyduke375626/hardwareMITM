@@ -34,6 +34,7 @@ module SignalDebouncer #(
 	reg sync2 = (IN_ACTIVE_LOW == 1) ? 1'b1 : 1'b0;
 	reg sync3 = (IN_ACTIVE_LOW == 1) ? 1'b1 : 1'b0;
 	reg [CTR_SIZE-1:0] ctr;
+	reg last_active = 1'b0;
 	
 	always @ (posedge sys_clk)
 	begin
@@ -49,9 +50,10 @@ module SignalDebouncer #(
 			ctr <= 0;
 		end
 		
-		// if counter reached max, pulse output signal active iff input is active
+		// if counter reached max, pulse output signal active iff 1) input is active, and 2) last time counter reached max, signal was inactive
 		else if (ctr == CTR_MAX) begin
-			out_sig <= (IN_ACTIVE_LOW == OUT_ACTIVE_LOW) ? sync3 : ~sync3;
+			out_sig <= (IN_ACTIVE_LOW == OUT_ACTIVE_LOW) ? ~last_active & sync3 : ~last_active & ~sync3;
+			last_active <= (IN_ACTIVE_LOW == 1) ? ~sync3 : sync3;
 			ctr <= 0;
 		end
 		

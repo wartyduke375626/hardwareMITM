@@ -13,7 +13,6 @@ module EdgeDetector #(
 
 	// inputs
 	input wire sys_clk,
-	input wire rst,
 	input wire sig,
 	
 	// outputs
@@ -21,28 +20,21 @@ module EdgeDetector #(
 );
 
 	// internal registers
-	reg old_sig;
+	reg old_sig = (FALL_EDGE == 0) ? 1'b1 : 1'b0;
 
 	always @ (posedge sys_clk)
 	begin
-		// on reset clear output and equalize signals
-		if (rst == 1'b1) begin
-			edge_sig <= 1'b0;
-			old_sig <= sig;
+		
+		// edge detection logic
+		if (FALL_EDGE == 0) begin
+			edge_sig <= sig & (~old_sig);
+		end
+		else begin
+			edge_sig <= (~sig) & old_sig;
 		end
 		
-		else begin
-			// edge detection logic
-			if (FALL_EDGE == 0) begin
-				edge_sig <= sig & (~old_sig);
-			end
-			else begin
-				edge_sig <= (~sig) & old_sig;
-			end
-			
-			// save old signal value
-			old_sig <= sig;
-		end
+		// save old signal value
+		old_sig <= sig;
 	end
 
 endmodule

@@ -12,9 +12,9 @@ set_io  -pullup yes     mode_btn        118
 # user outputs
 set_io                  mode_leds[0]    99
 set_io                  mode_leds[1]    98
+set_io                  mode_leds[2]    97
 set_io                  comm_active_led 95
-set_io                  unused_leds[0]  97
-set_io                  unused_leds[1]  96
+set_io                  unused_leds     96
 
 # bus inputs
 set_io                  miso_in     81

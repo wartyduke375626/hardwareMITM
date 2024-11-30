@@ -19,7 +19,6 @@ module EdgeDetector_test();
 	
 	// internal registers
 	reg sys_clk = 1'b0;
-	reg rst = 1'b0;
 	reg sig = 1'b0;
 	
 	// helper variables
@@ -30,7 +29,6 @@ module EdgeDetector_test();
 		.FALL_EDGE(FALL_EDGE)
 	) UUT (
 		.sys_clk(sys_clk),
-		.rst(rst),
 		.sig(sig),
 		.edge_sig(edge_sig)
 	);
@@ -47,11 +45,6 @@ module EdgeDetector_test();
 	begin
 		// wait some time
 		#100;
-		
-		// send reset signal at the beginning
-		rst = 1'b1;
-		#(CLK_PERIOD_NS);
-		rst = 1'b0;
 	
 		// wait some time for initialization
 		#(2*CLK_PERIOD_NS);
@@ -68,25 +61,9 @@ module EdgeDetector_test();
 		// wait for at least 3 sys_clk periods
 		#(CLK_PERIOD_NS * 3);
 		
-		// test reset signal while sig is high
-		sig = 1'b1;
-		#(CLK_PERIOD_NS * 6);
-		rst = 1'b1;
-		#(CLK_PERIOD_NS);
-		rst = 1'b0;
-		#(CLK_PERIOD_NS * 6);
-		sig = 1'b0;
-		
-		#50 // create a small phase shift
+		#50; // create a small phase shift
 		for (i = 0; i < 20; i++)
 		begin
-			// generate a random reset signal
-			if (i % 8 == 7) begin
-				rst = 1'b1;
-				#(CLK_PERIOD_NS);
-				rst = 1'b0;
-			end
-			
 			// generate clock signal on signal line
 			sig = ~sig;
 			#(CLK_PERIOD_NS * 3 + 100);

@@ -27,7 +27,7 @@ module TopLevelModule #(
 	// user outputs
 	output wire [MODE_WIDTH-1:0] mode_leds,
 	output wire comm_active_led,
-	output wire [1:0] unused_leds,
+	output wire [0:0] unused_leds,
 	
 	
 	// bus outputs
@@ -42,9 +42,10 @@ module TopLevelModule #(
 	localparam CHUNK_SIZE_WIDTH = $clog2(BUF_SIZE+1);	// storing A requires exactly ceil(lg(A+1)) bits
 	
 	// MITM modes
-	localparam MODE_WIDTH = 2;
-	localparam MITM_MODE_FORWARD = 2'b01;
-	localparam MITM_MODE_SUB_ALL = 2'b10;
+	localparam MODE_WIDTH = 3;
+	localparam MITM_MODE_FORWARD = 3'b001;
+	localparam MITM_MODE_SUB_ALL = 3'b010;
+	localparam MITM_MODE_SUB_HALF = 3'b100;
 
 	// internal signals
 	
@@ -179,7 +180,8 @@ module TopLevelModule #(
 		.MODE_WIDTH(MODE_WIDTH),
 		
 		.MITM_MODE_FORWARD(MITM_MODE_FORWARD),
-		.MITM_MODE_SUB_ALL(MITM_MODE_SUB_ALL)
+		.MITM_MODE_SUB_ALL(MITM_MODE_SUB_ALL),
+		.MITM_MODE_SUB_HALF(MITM_MODE_SUB_HALF)
 	) mitmLogic (
 		.sys_clk(sys_clk),
 		.rst(rst),

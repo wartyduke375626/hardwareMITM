@@ -85,6 +85,7 @@ module BusControl #(
 	
 	// buffer control
 	reg buf_start = 1'b0;
+	reg buf_rst = 1'b0;
 	
 	reg	[2:0] state = STATE_RESET;
 	
@@ -132,12 +133,27 @@ module BusControl #(
 						bus_ready <= 1'b0;
 						state <= STATE_FINISH_COMM;
 					end
+					
+					// on an unexpected SS fall edge, reset bus communication
+					else if (ss_fall_edge == 1'b1) begin
+						buf_rst <= 1'b1;
+						state <= STATE_RESET;
+					end
 				end
 				
 				// delay one clock cycle for buffers to process inputs
 				STATE_BUF_START: begin
-					buf_start <= 1'b0;
-					state <= STATE_BUF_WAIT;
+				
+					// on an unexpected SS fall edge, reset bus communication
+					if (ss_fall_edge == 1'b1) begin
+						buf_rst <= 1'b1;
+						state <= STATE_RESET;
+					end
+					
+					else begin
+						buf_start <= 1'b0;
+						state <= STATE_BUF_WAIT;
+					end
 				end
 				
 				// wait for buffers to process communication chunk and go back to communication state
@@ -145,6 +161,12 @@ module BusControl #(
 					if (buf_done == 1'b1) begin
 						bus_ready <= 1'b1;
 						state <= STATE_COMM;
+					end
+					
+					// on an unexpected SS fall edge, reset bus communication
+					else if (ss_fall_edge == 1'b1) begin
+						buf_rst <= 1'b1;
+						state <= STATE_RESET;
 					end
 				end
 				
@@ -160,6 +182,7 @@ module BusControl #(
 				// reset internal state
 				STATE_RESET: begin
 					buf_start <= 1'b0;
+					buf_rst <= 1'b0;
 	
 					fake_sclk_out <= 1'b0;
 					fake_ss_out <= 1'b0;
@@ -191,7 +214,6 @@ module BusControl #(
 		.FALL_EDGE(0)
 	) sclkRiseEdgeDetect (
 		.sys_clk(sys_clk),
-		.rst(rst),
 		.sig(sclk_in),
 		.edge_sig(sclk_rise_edge)
 	);
@@ -201,7 +223,6 @@ module BusControl #(
 		.FALL_EDGE(1)
 	) sclkFallEdgeDetect (
 		.sys_clk(sys_clk),
-		.rst(rst),
 		.sig(sclk_in),
 		.edge_sig(sclk_fall_edge)
 	);
@@ -211,7 +232,6 @@ module BusControl #(
 		.FALL_EDGE(0)
 	) ssRiseEdgeDetect (
 		.sys_clk(sys_clk),
-		.rst(rst),
 		.sig(ss_in),
 		.edge_sig(ss_rise_edge)
 	);
@@ -221,7 +241,6 @@ module BusControl #(
 		.FALL_EDGE(1)
 	) ssFallEdgeDetect (
 		.sys_clk(sys_clk),
-		.rst(rst),
 		.sig(ss_in),
 		.edge_sig(ss_fall_edge)
 	);
@@ -232,7 +251,7 @@ module BusControl #(
 		.BUF_SIZE(BUF_SIZE)
 	) misoReadBuffer (
 		.sys_clk(sys_clk),
-		.rst(rst),
+		.rst(rst | buf_rst),
 		.start(buf_start),
 		.read_sig(sclk_rise_edge),
 		.data_in(miso_in),
@@ -246,7 +265,7 @@ module BusControl #(
 		.BUF_SIZE(BUF_SIZE)
 	) mosiReadBuffer (
 		.sys_clk(sys_clk),
-		.rst(rst),
+		.rst(rst | buf_rst),
 		.start(buf_start),
 		.read_sig(sclk_rise_edge),
 		.data_in(mosi_in),
@@ -260,7 +279,7 @@ module BusControl #(
 		.BUF_SIZE(BUF_SIZE)
 	) misoWriteBuffer (
 		.sys_clk(sys_clk),
-		.rst(rst),
+		.rst(rst | buf_rst),
 		.start(buf_start),
 		.write_sig(sclk_fall_edge),
 		.data_in(fake_miso_data),
@@ -274,7 +293,7 @@ module BusControl #(
 		.BUF_SIZE(BUF_SIZE)
 	) mosiWriteBuffer (
 		.sys_clk(sys_clk),
-		.rst(rst),
+		.rst(rst | buf_rst),
 		.start(buf_start),
 		.write_sig(sclk_fall_edge),
 		.data_in(fake_mosi_data),

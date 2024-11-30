@@ -10,7 +10,7 @@ module SignalDebouncer_test();
 	// local constants
 	localparam SYS_CLK = 12_000_000;	// 12 MHz
 	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
-	localparam SIM_DURATION = 50_000;	// 50 us
+	localparam SIM_DURATION = 30_000;	// 30 us
 	
 	localparam DEBOUNCE_COUNT = 16;
 	localparam IN_ACTIVE_LOW = 1;
@@ -62,7 +62,7 @@ module SignalDebouncer_test();
 		in_sig = 1'b0;
 		
 		// wait some time for next signal
-		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 500);
+		#(5 * CLK_PERIOD_NS * DEBOUNCE_COUNT + 1234);
 		
 		// generate noisy random signal bounces
 		n = $urandom % 50;
@@ -75,7 +75,7 @@ module SignalDebouncer_test();
 		in_sig = 1'b1;
 		
 		// wait some time for next signal
-		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 500);
+		#(5 * CLK_PERIOD_NS * DEBOUNCE_COUNT + 2431);
 		
 		// generate noisy random signal bounces
 		n = $urandom % 50;
@@ -88,7 +88,7 @@ module SignalDebouncer_test();
 		in_sig = 1'b0;
 		
 		// wait some time for next signal
-		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 500);
+		#(5 * CLK_PERIOD_NS * DEBOUNCE_COUNT + 987);
 		
 		// generate noisy random signal bounces
 		n = $urandom % 50;

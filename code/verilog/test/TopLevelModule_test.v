@@ -15,7 +15,7 @@ module TopLevelModule_test();
 	localparam DEBOUNCE_COUNT = 16;
 	
 	localparam DATA_FRAME_SIZE = 20;
-	localparam MODE_WIDTH = 2;
+	localparam MODE_WIDTH = 3;
 	
 	// internal signals
 	wire [MODE_WIDTH-1:0] mode_leds;

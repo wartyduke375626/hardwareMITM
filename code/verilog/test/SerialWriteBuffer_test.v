@@ -39,7 +39,6 @@ module SerialWriteBuffer_test();
 		.FALL_EDGE(1)	// we want our buffer to synchronize on falling edge (data needs to be present on next rising edge)
 	) dataInDetect (
 		.sys_clk(sys_clk),
-		.rst(rst),
 		.sig(data_clk),
 		.edge_sig(write_sig)
 	);
