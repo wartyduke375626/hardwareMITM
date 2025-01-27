@@ -1,3 +1,6 @@
+# This Makefile module includes rules for building the final binary
+
+
 YOSYS_FLAGS=-q -p
 YOSYS_CMD=synth_ice40 -relut
 
@@ -9,7 +12,7 @@ ICETIME_FLAGS=-d hx1k -P tq144 -c 48 -t
 
 
 # Generate timing constraints report
-$(REPORT_DIR)/icestick.rpt: $(BUILD_DIR)/icestick.asc $(SRC_DIR)/icestick.pcf | $(REPORT_DIR)
+$(RPT_DIR)/icestick.rpt: $(BUILD_DIR)/icestick.asc $(SRC_DIR)/icestick.pcf | $(RPT_DIR)
 	icetime $(ICETIME_FLAGS) -p $(SRC_DIR)/icestick.pcf -r $@ $<
 
 
@@ -20,8 +23,6 @@ $(BUILD_DIR)/icestick.bin: $(BUILD_DIR)/icestick.asc
 $(BUILD_DIR)/icestick.asc: $(BUILD_DIR)/icestick.json $(SRC_DIR)/icestick.pcf | $(BUILD_DIR)
 	nextpnr-ice40 $(NEXTPNR_FLAGS) --json $< --pcf $(SRC_DIR)/icestick.pcf --asc $@
 
-$(BUILD_DIR)/icestick.json: $(SRC_DIR)/TopLevelModule.v $(SRC_DIR)/BusControl.v \
-		$(SRC_DIR)/EdgeDetector.v $(SRC_DIR)/IoHandler.v $(SRC_DIR)/MitmLogic.v \
-		$(SRC_DIR)/OutputMux.v $(SRC_DIR)/SerialReadBuffer.v $(SRC_DIR)/SerialWriteBuffer.v \
-		$(SRC_DIR)/SignalDebouncer.v $(SRC_DIR)/Synchronizer.v | $(BUILD_DIR)
+$(BUILD_DIR)/icestick.json: $(SRC_DIR)/TopLevelModule.v $(SRC_DIR)/BusControl.v $(SRC_DIR)/MitmLogic.v \
+		$(SRC_DIR)/$(PRIM)/*.v $(SRC_DIR)/$(IO)/*.v | $(BUILD_DIR)
 	yosys $(YOSYS_FLAGS) "$(YOSYS_CMD) -top TopLevelModule -json $@" $^

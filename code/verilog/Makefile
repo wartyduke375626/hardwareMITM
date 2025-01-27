@@ -1,17 +1,20 @@
-.PHONY: clean simulate bin rpt default
+.PHONY: clean sim bin rpt default
 
 
 # Directoriy declarations
 SRC_DIR=src
-TEST_DIR=test
+TEST_DIR=tests
+
+PRIM=primitives
+IO=io
 
 BUILD_DIR=build
-TEST_BUILD_DIR=$(BUILD_DIR)/test
-SIM_DIR=sim
-REPORT_DIR=report
+VVP_DIR=$(BUILD_DIR)/vvp
+SIM_DIR=$(BUILD_DIR)/simulations
+RPT_DIR=$(BUILD_DIR)/reports
 
 
-default: simulate bin rpt
+default: sim bin rpt
 
 
 include icestick.mk
@@ -19,23 +22,23 @@ include test.mk
 
 
 # Generate timing constraints report
-rpt: $(REPORT_DIR)/icestick.rpt
+rpt: $(RPT_DIR)/icestick.rpt
 
 # Build icestick binary
 bin: $(BUILD_DIR)/icestick.bin
 
 # Run all simulations
-simulate: \
-		$(SIM_DIR)/BusControl_test.vcd \
-		$(SIM_DIR)/ClockGenerator_test.vcd \
-		$(SIM_DIR)/EdgeDetector_test.vcd \
-		$(SIM_DIR)/IoHandler_test.vcd \
+sim: \
+		$(SIM_DIR)/$(PRIM)/ClockGenerator_test.vcd \
+		$(SIM_DIR)/$(PRIM)/EdgeDetector_test.vcd \
+		$(SIM_DIR)/$(PRIM)/OutputMux_test.vcd \
+		$(SIM_DIR)/$(PRIM)/SerialReadBuffer_test.vcd \
+		$(SIM_DIR)/$(PRIM)/SerialWriteBuffer_test.vcd \
+		$(SIM_DIR)/$(IO)/IoHandler_test.vcd \
+		$(SIM_DIR)/$(IO)/SignalDebouncer_test.vcd \
+		$(SIM_DIR)/$(IO)/Synchronizer_test.vcd \
 		$(SIM_DIR)/MitmLogic_test.vcd \
-		$(SIM_DIR)/OutputMux_test.vcd \
-		$(SIM_DIR)/SerialReadBuffer_test.vcd \
-		$(SIM_DIR)/SerialWriteBuffer_test.vcd \
-		$(SIM_DIR)/SignalDebouncer_test.vcd \
-		$(SIM_DIR)/Synchronizer_test.vcd \
+		$(SIM_DIR)/BusControl_test.vcd \
 		$(SIM_DIR)/TopLevelModule_test.vcd;
 
 
@@ -43,16 +46,16 @@ simulate: \
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 	
-$(TEST_BUILD_DIR):
-	mkdir -p $(TEST_BUILD_DIR)
+$(VVP_DIR):
+	mkdir -p $(VVP_DIR)
 	
 $(SIM_DIR):
 	mkdir -p $(SIM_DIR)
 
-$(REPORT_DIR):
-	mkdir -p $(REPORT_DIR)
+$(RPT_DIR):
+	mkdir -p $(RPT_DIR)
 
 
 # Clean rule
 clean:
-	rm -rf $(BUILD_DIR) $(SIM_DIR) $(REPORT_DIR)
+	rm -rf $(BUILD_DIR)
