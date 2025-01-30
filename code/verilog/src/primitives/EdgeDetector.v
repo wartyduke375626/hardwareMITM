@@ -2,7 +2,7 @@
  * Edge detector:
  * - detects rising edges on the signal line
  * - edges on signal line must be synchronous to the system clock
- * - when FALL_EDGE parameter is set detects falling edges instead
+ * - when FALL_EDGE parameter is set to 1 detects falling edges instead
 **/
 
 module EdgeDetector #(
@@ -26,12 +26,7 @@ module EdgeDetector #(
 	begin
 		
 		// edge detection logic
-		if (FALL_EDGE == 0) begin
-			edge_sig <= sig & (~old_sig);
-		end
-		else begin
-			edge_sig <= (~sig) & old_sig;
-		end
+		edge_sig <= (FALL_EDGE == 0) ? (sig & (~old_sig)) : ((~sig) & old_sig);
 		
 		// save old signal value
 		old_sig <= sig;

@@ -11,9 +11,10 @@ module SerialReadBuffer_test();
 	localparam SYS_CLK = 12_000_000;	// 12 MHz
 	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
 	localparam SIM_DURATION = 50_000;	// 50 us
-	localparam DATA_IN_CLK_PERIOD_NS = 8 * CLK_PERIOD_NS;	// data rate has to be slower then sys_clk
+	localparam in_line_CLK_PERIOD_NS = 8 * CLK_PERIOD_NS;	// data rate has to be slower then sys_clk
 	
 	localparam BUF_SIZE = 8;
+	localparam LSB_FIRST = 0;
 	localparam READ_COUNT_SIZE = $clog2(BUF_SIZE+1);
 	
 	// internal signals
@@ -26,8 +27,8 @@ module SerialReadBuffer_test();
 	reg data_clk = 1'b0;	// virtual clock to send data on input line
 	reg rst = 1'b0;
 	reg start = 1'b0;
-	reg data_in = 1'b0;
-	reg signal_data_in = 1'b0;
+	reg in_line = 1'b0;
+	reg signal_in_line = 1'b0;
 	reg [READ_COUNT_SIZE-1:0] read_count = 0;
 	
 	// helper variables
@@ -45,13 +46,14 @@ module SerialReadBuffer_test();
 	
 	// instantiate uut
 	SerialReadBuffer #(
-		.BUF_SIZE(BUF_SIZE)
+		.BUF_SIZE(BUF_SIZE),
+		.LSB_FIRST(LSB_FIRST)
 	) UUT (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.start(start),
 		.read_sig(read_sig),
-		.data_in(data_in),
+		.in_line(in_line),
 		.read_count(read_count),
 		.data_out(data_out),
 		.done_sig(done_sig)
@@ -80,67 +82,67 @@ module SerialReadBuffer_test();
 		
 		// send 8 bits of data
 		data_to_send = 8'h3a; // byte to send is indexed as msb
-		signal_data_in = 1'b1;
-		#(DATA_IN_CLK_PERIOD_NS);
+		signal_in_line = 1'b1;
+		#(in_line_CLK_PERIOD_NS);
 		for (i = 7; i >= 0; i--) // send most significat bit first
 		begin
 			data_clk = 1'b0;
-			data_in = data_to_send[i];
-			#(DATA_IN_CLK_PERIOD_NS / 2);
+			in_line = data_to_send[i];
+			#(in_line_CLK_PERIOD_NS / 2);
 			data_clk = 1'b1;
-			#(DATA_IN_CLK_PERIOD_NS / 2);
+			#(in_line_CLK_PERIOD_NS / 2);
 		end
 		data_clk = 1'b0;
-		data_in = 1'b0;
-		#(DATA_IN_CLK_PERIOD_NS);
-		signal_data_in = 1'b0;
+		in_line = 1'b0;
+		#(in_line_CLK_PERIOD_NS);
+		signal_in_line = 1'b0;
 		
 		// wait random time
-		#(DATA_IN_CLK_PERIOD_NS + 517);
+		#(in_line_CLK_PERIOD_NS + 517);
 		
 		// send 6 bits of data
 		data_to_send = 6'o52; // byte to send is indexed as msb
-		signal_data_in = 1'b1;
-		#(DATA_IN_CLK_PERIOD_NS);
+		signal_in_line = 1'b1;
+		#(in_line_CLK_PERIOD_NS);
 		for (i = 5; i >= 0; i--) // send most significat bit first
 		begin
 			data_clk = 1'b0;
-			data_in = data_to_send[i];
-			#(DATA_IN_CLK_PERIOD_NS / 2);
+			in_line = data_to_send[i];
+			#(in_line_CLK_PERIOD_NS / 2);
 			data_clk = 1'b1;
-			#(DATA_IN_CLK_PERIOD_NS / 2);
+			#(in_line_CLK_PERIOD_NS / 2);
 		end
 		data_clk = 1'b0;
-		data_in = 1'b0;
-		#(DATA_IN_CLK_PERIOD_NS);
-		signal_data_in = 1'b0;
+		in_line = 1'b0;
+		#(in_line_CLK_PERIOD_NS);
+		signal_in_line = 1'b0;
 		
 		// wait random time
-		#(DATA_IN_CLK_PERIOD_NS + 1119);
+		#(in_line_CLK_PERIOD_NS + 1119);
 		
 		// send 4 bits of data
 		data_to_send = 4'hf; // byte to send is indexed as msb
-		signal_data_in = 1'b1;
-		#(DATA_IN_CLK_PERIOD_NS);
+		signal_in_line = 1'b1;
+		#(in_line_CLK_PERIOD_NS);
 		for (i = 3; i >= 0; i--) // send most significat bit first
 		begin
 			data_clk = 1'b0;
-			data_in = data_to_send[i];
-			#(DATA_IN_CLK_PERIOD_NS / 2);
+			in_line = data_to_send[i];
+			#(in_line_CLK_PERIOD_NS / 2);
 			data_clk = 1'b1;
-			#(DATA_IN_CLK_PERIOD_NS / 2);
+			#(in_line_CLK_PERIOD_NS / 2);
 		end
 		data_clk = 1'b0;
-		data_in = 1'b0;
-		#(DATA_IN_CLK_PERIOD_NS);
-		signal_data_in = 1'b0;
+		in_line = 1'b0;
+		#(in_line_CLK_PERIOD_NS);
+		signal_in_line = 1'b0;
 	end
 	
 	// test code
 	initial
 	begin
 		// wait for data sending signal
-		wait (signal_data_in == 1'b1);
+		wait (signal_in_line == 1'b1);
 		
 		// send signal to start reading byte
 		read_count = 8;
@@ -152,8 +154,8 @@ module SerialReadBuffer_test();
 		wait (done_sig == 1'b1);
 		
 		// wait for data sending signal
-		wait (signal_data_in == 1'b0);
-		wait (signal_data_in == 1'b1);
+		wait (signal_in_line == 1'b0);
+		wait (signal_in_line == 1'b1);
 		
 		// send signal to start reading byte
 		read_count = 6;
@@ -171,8 +173,8 @@ module SerialReadBuffer_test();
 		wait (done_sig == 1'b1);
 		
 		// wait for data sending signal
-		wait (signal_data_in == 1'b0);
-		wait (signal_data_in == 1'b1);
+		wait (signal_in_line == 1'b0);
+		wait (signal_in_line == 1'b1);
 		
 		// send signal to start reading byte
 		read_count = 4;

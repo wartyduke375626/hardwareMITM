@@ -1,15 +1,20 @@
 /**
  * Serial data read buffer:
  * - buffers n bits of data reading from a serial line, synchronizing on read signals
- * - the bits read will be stored in the least significant n bits of data_out, where the least significat bit is the last bit read
- * - BUF_SIZE is the maximum number of bits which can be buffered
+ * - the number of bits can be controlled dynamically with the read_count input
  * - the read signal must be synchronous to the system clock
+ * - BUF_SIZE is the maximum number of bits which can be buffered
+ * - by default, bits are left-shifted into the buffer, meaning bits are read most significant bit first
+ * - if LSB_FISRT is set to 1, bits are right-shifted instead (i.e. least significant bit is read first) 
+ * - if n < BUF_SIZE, the remaining BUF_SIZE-n bits in data_out are invalid
+ * - the position of invalid bits depends whether the bits are left-shifted or right-shifted
 **/
 
 module SerialReadBuffer #(
 
 	// parameters
-	parameter BUF_SIZE = 8
+	parameter BUF_SIZE = 8,
+	parameter LSB_FIRST = 0
 ) (
 	
 	// inputs
@@ -17,7 +22,7 @@ module SerialReadBuffer #(
 	input wire rst,
 	input wire start,
 	input wire read_sig,
-	input wire data_in,
+	input wire in_line,
 	input wire [CTR_SIZE-1:0] read_count,
 	
 	// outputs
@@ -69,7 +74,7 @@ module SerialReadBuffer #(
 					
 					// else read next bit on read signal
 					else if (read_sig == 1'b1) begin
-						data_out <= {data_out[BUF_SIZE-2:0], data_in}; // left shift next data bit
+						data_out <= (LSB_FIRST == 0) ? {data_out[BUF_SIZE-2:0], in_line} : {in_line, data_out[BUF_SIZE-1:1]};
 						ctr <= ctr - 1;
 					end
 				end

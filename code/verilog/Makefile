@@ -7,6 +7,7 @@ TEST_DIR=tests
 
 PRIM=primitives
 IO=io
+BUS=buses
 
 BUILD_DIR=build
 VVP_DIR=$(BUILD_DIR)/vvp
@@ -29,14 +30,15 @@ bin: $(BUILD_DIR)/icestick.bin
 
 # Run all simulations
 sim: \
-		$(SIM_DIR)/$(PRIM)/ClockGenerator_test.vcd \
 		$(SIM_DIR)/$(PRIM)/EdgeDetector_test.vcd \
 		$(SIM_DIR)/$(PRIM)/OutputMux_test.vcd \
+		$(SIM_DIR)/$(PRIM)/PulseGenerator_test.vcd \
 		$(SIM_DIR)/$(PRIM)/SerialReadBuffer_test.vcd \
 		$(SIM_DIR)/$(PRIM)/SerialWriteBuffer_test.vcd \
 		$(SIM_DIR)/$(IO)/IoHandler_test.vcd \
 		$(SIM_DIR)/$(IO)/SignalDebouncer_test.vcd \
 		$(SIM_DIR)/$(IO)/Synchronizer_test.vcd \
+		$(SIM_DIR)/$(BUS)/uart/UartDriver_test.vcd \
 		$(SIM_DIR)/MitmLogic_test.vcd \
 		$(SIM_DIR)/BusControl_test.vcd \
 		$(SIM_DIR)/TopLevelModule_test.vcd;

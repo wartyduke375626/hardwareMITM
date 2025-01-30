@@ -11,13 +11,15 @@ module SerialWriteBuffer_test();
 	localparam SYS_CLK = 12_000_000;	// 12 MHz
 	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
 	localparam SIM_DURATION = 50_000;	// 50 us
-	localparam DATA_OUT_CLK_PERIOD_NS = 8 * CLK_PERIOD_NS;	// data rate has to be slower then sys_clk
+	localparam out_line_CLK_PERIOD_NS = 8 * CLK_PERIOD_NS;	// data rate has to be slower then sys_clk
 	
 	localparam BUF_SIZE = 8;
+	localparam LSB_FIRST = 0;
+	localparam ACTIVE_LOW = 0;
 	localparam WRITE_COUNT_SIZE = $clog2(BUF_SIZE+1);
 	
 	// internal signals
-	wire data_out;
+	wire out_line;
 	wire done_sig;
 	wire write_sig;
 	
@@ -27,7 +29,7 @@ module SerialWriteBuffer_test();
 	reg rst = 1'b0;
 	reg start = 1'b0;
 	reg [BUF_SIZE-1:0] data_in = 0;
-	reg signal_data_out = 1'b0;
+	reg signal_out_line = 1'b0;
 	reg [WRITE_COUNT_SIZE-1:0] write_count = 0;
 	
 	// helper variables
@@ -45,7 +47,9 @@ module SerialWriteBuffer_test();
 	
 	// instantiate uut
 	SerialWriteBuffer #(
-		.BUF_SIZE(BUF_SIZE)
+		.BUF_SIZE(BUF_SIZE),
+		.LSB_FIRST(LSB_FIRST),
+		.ACTIVE_LOW(ACTIVE_LOW)
 	) UUT (
 		.sys_clk(sys_clk),
 		.rst(rst),
@@ -53,7 +57,7 @@ module SerialWriteBuffer_test();
 		.write_sig(write_sig),
 		.data_in(data_in),
 		.write_count(write_count),
-		.data_out(data_out),
+		.out_line(out_line),
 		.done_sig(done_sig)
 	);
 	
@@ -79,59 +83,59 @@ module SerialWriteBuffer_test();
 		#(2*CLK_PERIOD_NS);
 		
 		// clock 8 bits of data
-		signal_data_out = 1'b1;
-		#(DATA_OUT_CLK_PERIOD_NS);
+		signal_out_line = 1'b1;
+		#(out_line_CLK_PERIOD_NS);
 		for (i = 0; i < 8; i++)
 		begin
 			data_clk = 1'b0;
-			#(DATA_OUT_CLK_PERIOD_NS / 2);
+			#(out_line_CLK_PERIOD_NS / 2);
 			data_clk = 1'b1;
-			#(DATA_OUT_CLK_PERIOD_NS / 2);
+			#(out_line_CLK_PERIOD_NS / 2);
 		end
 		data_clk = 1'b0;
-		#(DATA_OUT_CLK_PERIOD_NS);
-		signal_data_out = 1'b0;
+		#(out_line_CLK_PERIOD_NS);
+		signal_out_line = 1'b0;
 		
 		// wait random time
-		#(DATA_OUT_CLK_PERIOD_NS + 371);
+		#(out_line_CLK_PERIOD_NS + 371);
 		
 		// clock 6 bits of data
-		signal_data_out = 1'b1;
-		#(DATA_OUT_CLK_PERIOD_NS);
+		signal_out_line = 1'b1;
+		#(out_line_CLK_PERIOD_NS);
 		for (i = 0; i < 6; i++)
 		begin
 			data_clk = 1'b0;
-			#(DATA_OUT_CLK_PERIOD_NS / 2);
+			#(out_line_CLK_PERIOD_NS / 2);
 			data_clk = 1'b1;
-			#(DATA_OUT_CLK_PERIOD_NS / 2);
+			#(out_line_CLK_PERIOD_NS / 2);
 		end
 		data_clk = 1'b0;
-		#(DATA_OUT_CLK_PERIOD_NS);
-		signal_data_out = 1'b0;
+		#(out_line_CLK_PERIOD_NS);
+		signal_out_line = 1'b0;
 		
 		// wait random time
-		#(DATA_OUT_CLK_PERIOD_NS + 973);
+		#(out_line_CLK_PERIOD_NS + 973);
 		
 		// clock 4 bits of data
-		signal_data_out = 1'b1;
-		#(DATA_OUT_CLK_PERIOD_NS);
+		signal_out_line = 1'b1;
+		#(out_line_CLK_PERIOD_NS);
 		for (i = 0; i < 4; i++)
 		begin
 			data_clk = 1'b0;
-			#(DATA_OUT_CLK_PERIOD_NS / 2);
+			#(out_line_CLK_PERIOD_NS / 2);
 			data_clk = 1'b1;
-			#(DATA_OUT_CLK_PERIOD_NS / 2);
+			#(out_line_CLK_PERIOD_NS / 2);
 		end
 		data_clk = 1'b0;
-		#(DATA_OUT_CLK_PERIOD_NS);
-		signal_data_out = 1'b0;
+		#(out_line_CLK_PERIOD_NS);
+		signal_out_line = 1'b0;
 	end
 	
 	// test code
 	initial
 	begin
 		// wait for data sending signal
-		wait (signal_data_out == 1'b1);
+		wait (signal_out_line == 1'b1);
 		
 		// set 8 bits to write
 		data_in = 8'h9c;
@@ -146,8 +150,8 @@ module SerialWriteBuffer_test();
 		wait (done_sig == 1'b1);
 		
 		// wait for data sending signal
-		wait (signal_data_out == 1'b0);
-		wait (signal_data_out == 1'b1);
+		wait (signal_out_line == 1'b0);
+		wait (signal_out_line == 1'b1);
 		
 		// set 6 bits to write
 		data_in = 6'o74 << 2;
@@ -168,8 +172,8 @@ module SerialWriteBuffer_test();
 		wait (done_sig == 1'b1);
 		
 		// wait for data sending signal
-		wait (signal_data_out == 1'b0);
-		wait (signal_data_out == 1'b1);
+		wait (signal_out_line == 1'b0);
+		wait (signal_out_line == 1'b1);
 		
 		// set 4 bits to write
 		data_in = 4'h5 << 4;

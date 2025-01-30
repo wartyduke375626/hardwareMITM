@@ -248,13 +248,14 @@ module BusControl #(
 	
 	// MISO read buffer
 	SerialReadBuffer #(
-		.BUF_SIZE(BUF_SIZE)
+		.BUF_SIZE(BUF_SIZE),
+		.LSB_FIRST(0)
 	) misoReadBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst | buf_rst),
 		.start(buf_start),
 		.read_sig(sclk_rise_edge),
-		.data_in(miso_in),
+		.in_line(miso_in),
 		.read_count(next_chunk_size),
 		.data_out(real_miso_data),
 		.done_sig(miso_read_done)
@@ -262,13 +263,14 @@ module BusControl #(
 	
 	// MOSI read buffer
 	SerialReadBuffer #(
-		.BUF_SIZE(BUF_SIZE)
+		.BUF_SIZE(BUF_SIZE),
+		.LSB_FIRST(0)
 	) mosiReadBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst | buf_rst),
 		.start(buf_start),
 		.read_sig(sclk_rise_edge),
-		.data_in(mosi_in),
+		.in_line(mosi_in),
 		.read_count(next_chunk_size),
 		.data_out(real_mosi_data),
 		.done_sig(mosi_read_done)
@@ -276,7 +278,9 @@ module BusControl #(
 	
 	// MISO write buffer
 	SerialWriteBuffer #(
-		.BUF_SIZE(BUF_SIZE)
+		.BUF_SIZE(BUF_SIZE),
+		.LSB_FIRST(0),
+		.ACTIVE_LOW(0)
 	) misoWriteBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst | buf_rst),
@@ -284,13 +288,15 @@ module BusControl #(
 		.write_sig(sclk_fall_edge),
 		.data_in(fake_miso_data),
 		.write_count(next_chunk_size),
-		.data_out(fake_miso_out),
+		.out_line(fake_miso_out),
 		.done_sig(miso_write_done)
 	);
 	
 	// MOSI write buffer
 	SerialWriteBuffer #(
-		.BUF_SIZE(BUF_SIZE)
+		.BUF_SIZE(BUF_SIZE),
+		.LSB_FIRST(0),
+		.ACTIVE_LOW(0)
 	) mosiWriteBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst | buf_rst),
@@ -298,7 +304,7 @@ module BusControl #(
 		.write_sig(sclk_fall_edge),
 		.data_in(fake_mosi_data),
 		.write_count(next_chunk_size),
-		.data_out(fake_mosi_out),
+		.out_line(fake_mosi_out),
 		.done_sig(mosi_write_done)
 	);
 	

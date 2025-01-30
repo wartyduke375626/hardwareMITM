@@ -1,24 +1,26 @@
 /**
- * Simulation of Clock signal generator module.
+ * Simulation of Pulse signal generator module.
 **/
 
 // define timescale
 `timescale 1 ns / 10 ps
 
-module ClockGenerator_test();
+module PulseGenerator_test();
 
 	// local constants
 	localparam SYS_CLK = 12_000_000;	// 12 MHz
 	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
-	localparam SIM_DURATION = 10_000;	// 10 us
-	
-	localparam DIV_FACTOR = 12;
-	localparam CYCLE_COUNT = 8;
+	localparam SIM_DURATION = 30_000;	// 30 us
+
+	localparam CYCLE_COUNT = 6;
+	localparam CYCLE_LEN = 8;
+	localparam PULSE_LEN = 1;
+	localparam DELAY = 7;
 	localparam ACTIVE_LOW = 0;
 	
 	// internal signals
-	wire out_clk;
-	wire busy;
+	wire out_sig;
+	wire done_sig;
 	
 	// internal registers
 	reg sys_clk = 1'b0;
@@ -26,16 +28,18 @@ module ClockGenerator_test();
 	reg start = 1'b0;
 	
 	// instantiate uut
-	ClockGenerator #(
-		.DIV_FACTOR(DIV_FACTOR),
+	PulseGenerator #(
 		.CYCLE_COUNT(CYCLE_COUNT),
+		.CYCLE_LEN(CYCLE_LEN),
+		.PULSE_LEN(PULSE_LEN),
+		.DELAY(DELAY),
 		.ACTIVE_LOW(ACTIVE_LOW)
 	) UUT (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.start(start),
-		.out_clk(out_clk),
-		.busy(busy)
+		.out_sig(out_sig),
+		.done_sig(done_sig)
 	);
 	
 	// generate sys_clock signal
@@ -64,10 +68,13 @@ module ClockGenerator_test();
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
 		
-		// wait while clock generator is busy
-		wait (busy == 1'b0);
+		// wait while signal generator is busy
+		wait (done_sig == 1'b1);
 		
-		// send signal to start reading byte
+		// wait some time
+		#2000;
+		
+		// send signal to start generating signal
 		start = 1'b1;
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
@@ -78,16 +85,19 @@ module ClockGenerator_test();
 		#(CLK_PERIOD_NS);
 		rst = 1'b0;
 		
-		// wait while clock generator is busy
-		wait (busy == 1'b0);
+		// wait while signal generator is busy
+		wait (done_sig == 1'b1);
 		
-		// send signal to start reading byte 2
+		// wait some time
+		#2000;
+		
+		// send signal to start generating signal
 		start = 1'b1;
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
 		
-		// wait while clock generator is busy
-		wait (busy == 1'b0);
+		// wait while signal generator is busy
+		wait (done_sig == 1'b1);
 	end
 	
 	// run simulation (output to .vcd file)
@@ -95,8 +105,8 @@ module ClockGenerator_test();
 	begin
 		
 		// create simulation output file
-		$dumpfile("ClockGenerator_test.vcd");
-		$dumpvars(0, ClockGenerator_test);
+		$dumpfile("PulseGenerator_test.vcd");
+		$dumpvars(0, PulseGenerator_test);
 		
 		// wait for simulation to complete
 		#(SIM_DURATION);

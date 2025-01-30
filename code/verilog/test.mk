@@ -7,15 +7,15 @@ IV_FLAGS=-DBENCH
 # Run simulation rules:
 
 # Primitives:
-$(SIM_DIR)/$(PRIM)/ClockGenerator_test.vcd: $(VVP_DIR)/ClockGenerator_test.vvp | $(SIM_DIR)
-	vvp $<
-	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
-
 $(SIM_DIR)/$(PRIM)/EdgeDetector_test.vcd: $(VVP_DIR)/EdgeDetector_test.vvp | $(SIM_DIR)
 	vvp $<
 	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
 
 $(SIM_DIR)/$(PRIM)/OutputMux_test.vcd: $(VVP_DIR)/OutputMux_test.vvp | $(SIM_DIR)
+	vvp $<
+	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
+
+$(SIM_DIR)/$(PRIM)/PulseGenerator_test.vcd: $(VVP_DIR)/PulseGenerator_test.vvp | $(SIM_DIR)
 	vvp $<
 	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
 
@@ -42,6 +42,12 @@ $(SIM_DIR)/$(IO)/Synchronizer_test.vcd: $(VVP_DIR)/Synchronizer_test.vvp | $(SIM
 	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
 
 
+# Buses:
+$(SIM_DIR)/$(BUS)/uart/UartDriver_test.vcd: $(VVP_DIR)/UartDriver_test.vvp | $(SIM_DIR)
+	vvp $<
+	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
+
+
 # Other:
 $(SIM_DIR)/BusControl_test.vcd: $(VVP_DIR)/BusControl_test.vvp | $(SIM_DIR)
 	vvp $<
@@ -59,13 +65,13 @@ $(SIM_DIR)/TopLevelModule_test.vcd: $(VVP_DIR)/TopLevelModule_test.vvp | $(SIM_D
 # IVerilog build rules
 
 # Primitives:
-$(VVP_DIR)/ClockGenerator_test.vvp: $(TEST_DIR)/$(PRIM)/ClockGenerator_test.v $(SRC_DIR)/$(PRIM)/ClockGenerator.v | $(VVP_DIR)
-	iverilog $(IV_FLAGS) $^ -o $@
-
 $(VVP_DIR)/EdgeDetector_test.vvp: $(TEST_DIR)/$(PRIM)/EdgeDetector_test.v $(SRC_DIR)/$(PRIM)/EdgeDetector.v | $(VVP_DIR)
 	iverilog $(IV_FLAGS) $^ -o $@
 
 $(VVP_DIR)/OutputMux_test.vvp: $(TEST_DIR)/$(PRIM)/OutputMux_test.v $(SRC_DIR)/$(PRIM)/OutputMux.v | $(VVP_DIR)
+	iverilog $(IV_FLAGS) $^ -o $@
+
+$(VVP_DIR)/PulseGenerator_test.vvp: $(TEST_DIR)/$(PRIM)/PulseGenerator_test.v $(SRC_DIR)/$(PRIM)/PulseGenerator.v | $(VVP_DIR)
 	iverilog $(IV_FLAGS) $^ -o $@
 
 $(VVP_DIR)/SerialReadBuffer_test.vvp: $(TEST_DIR)/$(PRIM)/SerialReadBuffer_test.v $(SRC_DIR)/$(PRIM)/SerialReadBuffer.v \
@@ -86,6 +92,13 @@ $(VVP_DIR)/SignalDebouncer_test.vvp: $(TEST_DIR)/$(IO)/SignalDebouncer_test.v $(
 	iverilog $(IV_FLAGS) $^ -o $@
 
 $(VVP_DIR)/Synchronizer_test.vvp: $(TEST_DIR)/$(IO)/Synchronizer_test.v $(SRC_DIR)/$(IO)/Synchronizer.v | $(VVP_DIR)
+	iverilog $(IV_FLAGS) $^ -o $@
+
+
+# Buses:
+$(VVP_DIR)/UartDriver_test.vvp: $(TEST_DIR)/$(BUS)/uart/UartDriver_test.v $(SRC_DIR)/$(BUS)/uart/UartDriver.v \
+		$(SRC_DIR)/$(PRIM)/EdgeDetector.v $(SRC_DIR)/$(PRIM)/PulseGenerator.v \
+		$(SRC_DIR)/$(PRIM)/SerialReadBuffer.v $(SRC_DIR)/$(PRIM)/SerialWriteBuffer.v | $(VVP_DIR)
 	iverilog $(IV_FLAGS) $^ -o $@
 
 
