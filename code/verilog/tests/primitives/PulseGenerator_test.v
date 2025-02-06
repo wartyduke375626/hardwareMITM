@@ -18,11 +18,11 @@ module PulseGenerator_test();
 	localparam DELAY = 7;
 	localparam ACTIVE_LOW = 0;
 	
-	// internal signals
+	// test signals
 	wire out_sig;
 	wire done_sig;
 	
-	// internal registers
+	// test registers
 	reg sys_clk = 1'b0;
 	reg rst = 1'b0;
 	reg start = 1'b0;

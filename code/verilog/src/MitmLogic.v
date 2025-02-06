@@ -1,240 +1,146 @@
 /**
  * Main MITM logic module:
- * - utilizes the Bus control module to carry out MITM attacks
- * - generates output data based on input data
- * - decides whether to output real and fake data
- * - utilizes the Bus control interface to split the buffering of serial data into chunks (instruction, address and data bits)
+ * - utilizes the Bus interface module to intercept and modify communication
+ * - an additional mode selecting input is used to switch dynamically between different MITM modes
 **/
 
 module MitmLogic #(
 
 	// parameters
-	parameter BUF_SIZE = 9,
-	parameter CHUNK_SIZE_WIDTH = $clog2(BUF_SIZE+1),	// storing A requires exactly ceil(lg(A+1)) bits
-	
-	// MITM modes
-	parameter MODE_WIDTH = 3,
-	parameter MITM_MODE_FORWARD = 0,
-	parameter MITM_MODE_SUB_ALL = 0,
-	parameter MITM_MODE_SUB_HALF = 0
+	parameter NUM_DATA_BITS = 8
 ) (
 
 	// system inputs
 	input wire sys_clk,
 	input wire rst,
-	input wire [MODE_WIDTH-1:0] mode_select,
 	
-	// bus control inputs
-	input wire comm_active,
-	input wire bus_ready,
-	
-	// data inputs
-	input wire [BUF_SIZE-1:0] real_miso_data,
-	input wire [BUF_SIZE-1:0] real_mosi_data,
+	// i/o inputs
+	input wire [NUM_MODES-1:0] mode_select,
 	
 	// bus control outputs
-	output reg cmd_next_chunk = 1'b0,
-	output reg cmd_finish = 1'b0,
+	output reg fake_if0_send_select = 1'b0,
+	output reg fake_if1_send_select = 1'b0,
+	output reg fake_if0_send_start = 1'b0,
+	output reg fake_if1_send_start = 1'b0,
 	
-	output reg [CHUNK_SIZE_WIDTH-1:0] next_chunk_size,
+	// bus status inputs
+	input wire if0_recv_new_data_ready,
+	input wire if1_recv_new_data_ready,
+	input wire if0_send_ready,
+	input wire if1_send_ready,
 	
-	// data control outputs
-	output reg fake_miso_select,
-	output reg fake_mosi_select,
-	
-	// data outputs
-	output reg [BUF_SIZE-1:0] fake_miso_data,
-	output reg [BUF_SIZE-1:0] fake_mosi_data
+	// data
+	output reg [NUM_DATA_BITS-1:0] fake_if0_send_data = 0,
+	output reg [NUM_DATA_BITS-1:0] fake_if1_send_data = 0,
+	input wire [NUM_DATA_BITS-1:0] real_if0_recv_data,
+	input wire [NUM_DATA_BITS-1:0] real_if1_recv_data
 );
 
-	// states
-	localparam STATE_IDLE = 4'd0;
-	localparam STATE_INSTR_START = 4'd1;
-	localparam STATE_INSTR = 4'd2;
-	localparam STATE_ADDR_START = 4'd3;
-	localparam STATE_ADDR = 4'd4;
-	localparam STATE_DATA_START = 4'd5;
-	localparam STATE_DATA = 4'd6;
-	localparam STATE_FINISH_START = 4'd7;
-	localparam STATE_FINISH = 4'd8;
-	localparam STATE_RESET = 4'd9;
+	// mode definitions
+	localparam NUM_MODES = 4;
+	localparam MODE_FORWARD = 4'b0001;
+	localparam MODE_SUB0_BLOCK1 = 4'b0010;
+	localparam MODE_SUB1_BLOCK0 = 4'b0100;
+	localparam MODE_ROT_13 = 4'b1000;
 
-	// internal registers
-	reg [3:0] state = STATE_RESET;
+	reg [NUM_MODES-1:0] mode = MODE_FORWARD;
 
 	always @ (posedge sys_clk)
 	begin
-		// on reset go to reset state
+		// reset internal state
 		if (rst == 1'b1) begin
-			state <= STATE_RESET;
+			fake_if0_send_select <= 1'b0;
+			fake_if1_send_select <= 1'b0;
+			fake_if0_send_start <= 1'b0;
+			fake_if1_send_start <= 1'b0;
+
+			fake_if0_send_data <= 0;
+			fake_if1_send_data <= 0;
+			
+			mode <= MODE_FORWARD;
 		end
 		
 		else begin
-			// state transition logic
-			case (state)
+			
+			mode <= mode_select;
+			
+			case (mode)
 				
-				// in idle state wait for communication to start
-				STATE_IDLE: begin
+				// forward mode -- set fake selects to 0
+				MODE_FORWARD: begin
 					
-					// if communication started, signal bus control to read instruction
-					// (1 start bit + 2 instruction bits)
-					if (comm_active == 1'b1) begin
-						next_chunk_size <= 3;
-						fake_miso_select <= 1'b0;
-						fake_mosi_select <= 1'b0;
-						cmd_next_chunk <= 1'b1;
-						state <= STATE_INSTR_START;
+					fake_if0_send_select <= 1'b0;
+					fake_if1_send_select <= 1'b0;
+					
+				end
+				
+				// substitute constant on if0 and block communication on if1 
+				MODE_SUB0_BLOCK1: begin
+				
+					fake_if0_send_select <= 1'b1;
+					fake_if1_send_select <= 1'b1;
+					
+					if (if0_recv_new_data_ready == 1'b1) begin
+						fake_if1_send_data <= 36;	// 0x24 -- $ sign
+						fake_if1_send_start <= 1'b1;
 					end
-				end
-				
-				// delay one clock cycle for bus control to process inputs
-				STATE_INSTR_START: begin
-					cmd_next_chunk <= 1'b0;
-					state <= STATE_INSTR;
-				end
-				
-				// wait for bus control to read instruction
-				STATE_INSTR: begin
-				
-					// evaluate if instruction is "read" and read address operand
-					if (bus_ready == 1'b1) begin
-					
-						// if instruction is "read", signal bus control to read address operand
-						if (real_mosi_data[2:0] == 3'b110) begin
-							next_chunk_size <= 9;
-							cmd_next_chunk <= 1'b1;
-							state <= STATE_ADDR_START;
-						end
-						
-						// else signal bus control to finish communication with current settings
-						else begin
-							next_chunk_size <= 0;
-							cmd_finish <= 1'b1;
-							state <= STATE_FINISH_START;
-						end
+					else begin
+						fake_if1_send_start <= 1'b0;
 					end
 					
-					// if communication was killed, finish
-					else if (comm_active == 1'b0) begin
-						state <= STATE_FINISH;
-					end
 				end
 				
-				// delay one clock cycle for bus control to process inputs
-				STATE_ADDR_START: begin
-					cmd_next_chunk <= 1'b0;
-					state <= STATE_ADDR;
-				end
+				// substitute constant on if1 and block communication on if0
+				MODE_SUB1_BLOCK0: begin
 				
-				// wait for bus control to read address
-				STATE_ADDR: begin
-				
-					// based on MITM mode decide what data to send on MISO line
-					if (bus_ready == 1'b1) begin
-						case (mode_select)
+					fake_if0_send_select <= 1'b1;
+					fake_if1_send_select <= 1'b1;
 					
-							// forward mode -- signal bus to finish with current 'forward' settings
-							MITM_MODE_FORWARD: begin
-								next_chunk_size <= 0;
-								cmd_finish <= 1'b1;
-								state <= STATE_FINISH_START;
-							end
-							
-							// substitute all mode -- substitute all data with the constant 0x24
-							MITM_MODE_SUB_ALL: begin
-								next_chunk_size <= 8;
-								fake_miso_data <= 8'h24 << (BUF_SIZE - 8); // write buffers operate from most significant bit
-								fake_miso_select <= 1'b1;
-								cmd_next_chunk <= 1'b1;
-								state <= STATE_DATA_START;
-							end
-							
-							// substitute every second mode -- substitute every second address data with the constant 0x24
-							MITM_MODE_SUB_HALF: begin
-							
-								// address is even
-								if (real_mosi_data[0] == 1'b0) begin
-									next_chunk_size <= 0;
-									cmd_finish <= 1'b1;
-									state <= STATE_FINISH_START;
-								end
-								
-								// address is odd
-								else begin
-									next_chunk_size <= 8;
-									fake_miso_data <= 8'h24 << (BUF_SIZE - 8); // write buffers operate from most significant bit
-									fake_miso_select <= 1'b1;
-									cmd_next_chunk <= 1'b1;
-									state <= STATE_DATA_START;
-								end
-							end
-							
-							// if no mode is selected, default is forward mode
-							default: begin
-								next_chunk_size <= 0;
-								cmd_finish <= 1'b1;
-								state <= STATE_FINISH_START;
-							end
-						
-						endcase
+					if (if1_recv_new_data_ready == 1'b1) begin
+						fake_if0_send_data <= 35;	// 0x23 -- # sign
+						fake_if0_send_start <= 1'b1;
+					end
+					else begin
+						fake_if0_send_start <= 1'b0;
 					end
 					
-					// if communication was killed, finish
-					else if (comm_active == 1'b0) begin
-						state <= STATE_FINISH;
+				end
+				
+				// perform ROT 13 encoding on if0->if1, decoding on if1->if0
+				MODE_ROT_13: begin
+				
+					fake_if0_send_select <= 1'b1;
+					fake_if1_send_select <= 1'b1;
+					
+					if (if0_recv_new_data_ready == 1'b1) begin
+						fake_if1_send_data <= real_if0_recv_data + 13;
+						fake_if1_send_start <= 1'b1;
 					end
-				end
-				
-				// delay one clock cycle for bus control to process inputs
-				STATE_DATA_START: begin
-					cmd_next_chunk <= 1'b0;
-					state <= STATE_DATA;
-				end
-				
-				// wait for bus control to write data and signal bus to finish communication
-				STATE_DATA: begin
-					if (bus_ready == 1'b1) begin
-						cmd_finish <= 1'b1;
-						state <= STATE_FINISH_START;
+					else begin
+						fake_if1_send_start <= 1'b0;
 					end
 					
-					// if communication was killed, finish
-					else if (comm_active == 1'b0) begin
-						state <= STATE_FINISH;
+					if (if1_recv_new_data_ready == 1'b1) begin
+						fake_if0_send_data <= real_if1_recv_data - 13;
+						fake_if0_send_start <= 1'b1;
 					end
-				end
-				
-				// delay one clock cycle for bus control to process inputs
-				STATE_FINISH_START: begin
-					cmd_finish <= 1'b0;
-					state <= STATE_FINISH;
-				end
-				
-				// wait for communication to finish
-				STATE_FINISH: begin
-					if (comm_active == 1'b0) begin
-						next_chunk_size <= 0;
-						fake_miso_select <= 1'b0;
-						fake_mosi_select <= 1'b0;
-						state <= STATE_IDLE;
+					else begin
+						fake_if0_send_start <= 1'b0;
 					end
-				end
-				
-				// reset internal state
-				STATE_RESET: begin
-					next_chunk_size <= 0;
-					fake_miso_select <= 1'b0;
-					fake_mosi_select <= 1'b0;
-					cmd_next_chunk <= 1'b0;
-					cmd_finish <= 1'b0;
-					fake_miso_data <= 0;
-					fake_mosi_data <= 0;
-					state <= STATE_IDLE;
+					
 				end
 				
 				// this should never occur
 				default: begin
-					state <= STATE_RESET;
+					fake_if0_send_select <= 1'b0;
+					fake_if1_send_select <= 1'b0;
+					fake_if0_send_start <= 1'b0;
+					fake_if1_send_start <= 1'b0;
+
+					fake_if0_send_data <= 0;
+					fake_if1_send_data <= 0;
+					
+					mode <= MODE_FORWARD;
 				end
 				
 			endcase

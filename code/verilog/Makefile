@@ -1,61 +1,73 @@
-.PHONY: clean sim bin rpt default
+.PHONY: clean sim bin default
 
 
-# Directoriy declarations
+# Directory declarations
 SRC_DIR=src
 TEST_DIR=tests
-
-PRIM=primitives
-IO=io
-BUS=buses
 
 BUILD_DIR=build
 VVP_DIR=$(BUILD_DIR)/vvp
 SIM_DIR=$(BUILD_DIR)/simulations
+SYNTH_DIR=$(BUILD_DIR)/synthesis
+PCF_DIR=$(BUILD_DIR)/pcf
+PNR_DIR=$(BUILD_DIR)/nextpnr
 RPT_DIR=$(BUILD_DIR)/reports
+BIN_DIR=$(BUILD_DIR)/bin
 
 
-default: sim bin rpt
+default: sim bin
 
 
 include icestick.mk
 include test.mk
 
 
-# Generate timing constraints report
-rpt: $(RPT_DIR)/icestick.rpt
+# Build all binaries
+bin: $(BIN_DIR)/icestick-uart.bin
 
-# Build icestick binary
-bin: $(BUILD_DIR)/icestick.bin
 
 # Run all simulations
 sim: \
-		$(SIM_DIR)/$(PRIM)/EdgeDetector_test.vcd \
-		$(SIM_DIR)/$(PRIM)/OutputMux_test.vcd \
-		$(SIM_DIR)/$(PRIM)/PulseGenerator_test.vcd \
-		$(SIM_DIR)/$(PRIM)/SerialReadBuffer_test.vcd \
-		$(SIM_DIR)/$(PRIM)/SerialWriteBuffer_test.vcd \
-		$(SIM_DIR)/$(IO)/IoHandler_test.vcd \
-		$(SIM_DIR)/$(IO)/SignalDebouncer_test.vcd \
-		$(SIM_DIR)/$(IO)/Synchronizer_test.vcd \
-		$(SIM_DIR)/$(BUS)/uart/UartDriver_test.vcd \
-		$(SIM_DIR)/MitmLogic_test.vcd \
-		$(SIM_DIR)/BusControl_test.vcd \
-		$(SIM_DIR)/TopLevelModule_test.vcd;
+		$(SIM_DIR)/primitives/EdgeDetector_test.vcd \
+		$(SIM_DIR)/primitives/OutputMux_test.vcd \
+		$(SIM_DIR)/primitives/PulseGenerator_test.vcd \
+		$(SIM_DIR)/primitives/SerialReadBuffer_test.vcd \
+		$(SIM_DIR)/primitives/SerialWriteBuffer_test.vcd \
+		$(SIM_DIR)/io/IoHandler_test.vcd \
+		$(SIM_DIR)/io/SignalDebouncer_test.vcd \
+		$(SIM_DIR)/io/Synchronizer_test.vcd \
+		$(SIM_DIR)/buses/uart/UartController_test.vcd \
+		$(SIM_DIR)/buses/uart/UartDriver_test.vcd \
+		$(SIM_DIR)/UartTopLevelModule_test.vcd \
+		$(SIM_DIR)/proprietary_eeprom/MitmLogic_test.vcd \
+		$(SIM_DIR)/proprietary_eeprom/BusControl_test.vcd \
+		$(SIM_DIR)/proprietary_eeprom/TopLevelModule_test.vcd;
 
 
 # Create directories
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
-	
+
 $(VVP_DIR):
 	mkdir -p $(VVP_DIR)
-	
+
 $(SIM_DIR):
 	mkdir -p $(SIM_DIR)
 
+$(SYNTH_DIR):
+	mkdir -p $(SYNTH_DIR)
+
+$(PCF_DIR):
+	mkdir -p $(PCF_DIR)
+
+$(PNR_DIR):
+	mkdir -p $(PNR_DIR)
+
 $(RPT_DIR):
 	mkdir -p $(RPT_DIR)
+
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
 
 
 # Clean rule

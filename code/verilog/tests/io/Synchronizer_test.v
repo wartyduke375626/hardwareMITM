@@ -14,10 +14,10 @@ module Synchronizer_test();
 	
 	localparam WIDTH = 4;
 	
-	// internal signals
+	// test signals
 	wire [WIDTH-1:0] out_line;
 	
-	// internal registers
+	// test registers
 	reg sys_clk = 1'b0;
 	reg [WIDTH-1:0] in_line = 1'b0;
 	

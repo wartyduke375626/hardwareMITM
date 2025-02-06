@@ -8,21 +8,19 @@
 module IoHandler #(
 
 	// parameters
-	parameter MODE_WIDTH = 3,
+	parameter MODE_WIDTH = 4,
 	parameter BUTTON_ACTIVE_LOW = 1,
 	parameter DEBOUNCE_COUNT = 65_536
 ) (
 
 	// inputs
 	input wire sys_clk,
-	
 	input wire mode_select_btn,
 	input wire comm_active,
 	
 	// outputs
 	output reg [MODE_WIDTH-1:0] mode_select = 1,
 	output wire [MODE_WIDTH-1:0] mode_leds,
-	
 	output wire comm_active_led
 );
 	

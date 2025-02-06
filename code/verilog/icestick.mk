@@ -1,28 +1,42 @@
-# This Makefile module includes rules for building the final binary
+# This Makefile module includes rules for building the final binary for the icestick FPGA
+
+SYS_FREQ=48
 
 
 YOSYS_FLAGS=-q -p
 YOSYS_CMD=synth_ice40 -relut
 
-NEXTPNR_FLAGS=--hx1k --package tq144 --freq 48 --opt-timing
+NEXTPNR_FLAGS=--hx1k --package tq144 --freq $(SYS_FREQ) --opt-timing
 
 ICEPACK_FLAGS=-s
 
-ICETIME_FLAGS=-d hx1k -P tq144 -c 48 -t
+ICETIME_FLAGS=-d hx1k -P tq144 -c $(SYS_FREQ) -t
 
 
-# Generate timing constraints report
-$(RPT_DIR)/icestick.rpt: $(BUILD_DIR)/icestick.asc $(SRC_DIR)/icestick.pcf | $(RPT_DIR)
-	icetime $(ICETIME_FLAGS) -p $(SRC_DIR)/icestick.pcf -r $@ $<
+
 
 
 # Build icestick binary
-$(BUILD_DIR)/icestick.bin: $(BUILD_DIR)/icestick.asc
+$(BIN_DIR)/icestick-uart.bin: $(PNR_DIR)/icestick-uart.asc $(RPT_DIR)/icestick-uart.rpt | $(BIN_DIR)
 	icepack $(ICEPACK_FLAGS) $< $@
 
-$(BUILD_DIR)/icestick.asc: $(BUILD_DIR)/icestick.json $(SRC_DIR)/icestick.pcf | $(BUILD_DIR)
-	nextpnr-ice40 $(NEXTPNR_FLAGS) --json $< --pcf $(SRC_DIR)/icestick.pcf --asc $@
 
-$(BUILD_DIR)/icestick.json: $(SRC_DIR)/TopLevelModule.v $(SRC_DIR)/BusControl.v $(SRC_DIR)/MitmLogic.v \
-		$(SRC_DIR)/$(PRIM)/*.v $(SRC_DIR)/$(IO)/*.v | $(BUILD_DIR)
-	yosys $(YOSYS_FLAGS) "$(YOSYS_CMD) -top TopLevelModule -json $@" $^
+# Generate timing constraints report
+$(RPT_DIR)/icestick-uart.rpt: $(PNR_DIR)/icestick-uart.asc $(PCF_DIR)/icestick-uart.pcf | $(RPT_DIR)
+	icetime $(ICETIME_FLAGS) -p $$(echo $^ | cut -d ' ' -f 2) -r $@ $<
+
+
+# Place and route
+$(PNR_DIR)/icestick-uart.asc: $(SYNTH_DIR)/icestick-uart.json $(PCF_DIR)/icestick-uart.pcf | $(PNR_DIR)
+	nextpnr-ice40 $(NEXTPNR_FLAGS) --json $< --pcf $$(echo $^ | cut -d ' ' -f 2) --asc $@
+
+
+# Generate final PCF file
+$(PCF_DIR)/icestick-uart.pcf: $(SRC_DIR)/pcf/icestick-main.pcf $(SRC_DIR)/pcf/icestick-uart.pcf | $(PCF_DIR)
+	cat $^ > $@
+
+
+# Synthetize verilog modules
+$(SYNTH_DIR)/icestick-uart.json: $(SRC_DIR)/TopLevelModule.v $(SRC_DIR)/config.vh $(SRC_DIR)/MitmLogic.v $(SRC_DIR)/buses/BusInterface.v \
+		$(SRC_DIR)/buses/uart/*.v $(SRC_DIR)/io/*.v $(SRC_DIR)/primitives/*.v  | $(SYNTH_DIR)
+	yosys -DBUS_UART $(YOSYS_FLAGS) "$(YOSYS_CMD) -top TopLevelModule -json $@" $< $$(echo $^ | cut -d ' ' -f 3-)

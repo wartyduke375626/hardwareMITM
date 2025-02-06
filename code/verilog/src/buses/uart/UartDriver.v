@@ -1,9 +1,9 @@
 /**
  * UART driver module:
  * - implements the UART physical layer protocol
- * - provides command interface for MITM logic module
- * - manages the bus communication based on fake_select and fake_data inputs
- * - the BIT_DURATION parameter define the duration of one bit in system clock cycles (calculated as system_frequency/baud_rate)
+ * - provides an interface to send and receive data with the UART protocol
+ * - 1 start bit, 1 stop bit and 0 parity bits are hardcoded
+ * - the BIT_DURATION parameter defines the duration of one bit in system clock cycles (calculated as system_frequency/baud_rate)
  * - the NUM_DATA_BITS parameter defines the number of bits per frame
 **/
 
@@ -18,25 +18,21 @@ module UartDriver #(
 	input wire sys_clk,
 	input wire rst,
 	
-	// bus line inputs
-	input wire rx_in,
-	
-	// command inputs
-	input wire cmd_tx_start,
-	
-	// data inputs
-	input wire [NUM_DATA_BITS-1:0] tx_data,
-	
-	// bus line outputs
-	output wire tx_out,
-	
+	// control inputs
+	input wire tx_start,
+
 	// status outputs
 	output reg rx_new_data = 1'b0,
 	output reg rx_ready = 1'b0,
 	output reg tx_ready = 1'b0,
 	
-	// data outputs
-	output wire [NUM_DATA_BITS-1:0] rx_data
+	// data
+	output wire [NUM_DATA_BITS-1:0] rx_data,
+	input wire [NUM_DATA_BITS-1:0] tx_data,
+	
+	// bus lines
+	input wire rx_in,
+	output wire tx_out
 );
 
 	// local constants
@@ -76,14 +72,14 @@ module UartDriver #(
 	reg rx_clk_start = 1'b0;
 	reg tx_clk_start = 1'b0;
 	
-	reg	[1:0] rx_state = STATE_RESET;
-	reg	[1:0] tx_state = STATE_RESET;
-	
 	// states
 	localparam STATE_IDLE = 2'd0;
 	localparam STATE_BUF_START = 2'd1;
 	localparam STATE_BUF_WAIT = 2'd2;
 	localparam STATE_RESET = 2'd3;
+	
+	reg	[1:0] rx_state = STATE_RESET;
+	reg	[1:0] tx_state = STATE_RESET;
 	
 	// RX control logic
 	always @ (posedge sys_clk)
@@ -100,15 +96,13 @@ module UartDriver #(
 				
 				// in idle state wait for start bit and signal RX buffer and clock generator start
 				STATE_IDLE: begin
+					rx_new_data <= 1'b0;
+				
 					if (rx_start_bit_edge == 1'b1) begin
 						rx_ready <= 1'b0;
 						rx_buf_start <= 1'b1;
 						rx_clk_start <= 1'b1;
 						rx_state <= STATE_BUF_START;
-					end
-					
-					else begin
-						rx_new_data <= 1'b0;
 					end
 				end
 				
@@ -164,7 +158,7 @@ module UartDriver #(
 				
 				// in idle state wait for transmit start command and signal TX buffer and clock generator start
 				STATE_IDLE: begin
-					if (cmd_tx_start == 1'b1) begin
+					if (tx_start == 1'b1) begin
 						tx_ready <= 1'b0;
 						tx_buf_start <= 1'b1;
 						tx_clk_start <= 1'b1;

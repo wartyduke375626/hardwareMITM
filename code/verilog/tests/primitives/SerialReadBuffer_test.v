@@ -11,18 +11,18 @@ module SerialReadBuffer_test();
 	localparam SYS_CLK = 12_000_000;	// 12 MHz
 	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
 	localparam SIM_DURATION = 50_000;	// 50 us
-	localparam in_line_CLK_PERIOD_NS = 8 * CLK_PERIOD_NS;	// data rate has to be slower then sys_clk
+	localparam IN_LINE_CLK_PERIOD_NS = 8 * CLK_PERIOD_NS;	// data rate has to be slower then sys_clk
 	
 	localparam BUF_SIZE = 8;
 	localparam LSB_FIRST = 0;
 	localparam READ_COUNT_SIZE = $clog2(BUF_SIZE+1);
 	
-	// internal signals
+	// test signals
 	wire [BUF_SIZE-1:0] data_out;
 	wire done_sig;
 	wire read_sig;
 	
-	// internal registers
+	// test registers
 	reg sys_clk = 1'b0;
 	reg data_clk = 1'b0;	// virtual clock to send data on input line
 	reg rst = 1'b0;
@@ -32,8 +32,27 @@ module SerialReadBuffer_test();
 	reg [READ_COUNT_SIZE-1:0] read_count = 0;
 	
 	// helper variables
-	integer i;
 	reg [BUF_SIZE-1:0] data_to_send;
+	
+	// helper task to simulate data being sent
+	task send_data(input integer data_len);
+		integer i;
+		
+		signal_in_line = 1'b1;
+		#(IN_LINE_CLK_PERIOD_NS);
+		for (i = data_len-1; i >= 0; i--)	// send most significat bit first
+		begin
+			data_clk = 1'b0;
+			in_line = data_to_send[i];
+			#(IN_LINE_CLK_PERIOD_NS / 2);
+			data_clk = 1'b1;
+			#(IN_LINE_CLK_PERIOD_NS / 2);
+		end
+		data_clk = 1'b0;
+		in_line = 1'b0;
+		#(IN_LINE_CLK_PERIOD_NS);
+		signal_in_line = 1'b0;
+	endtask
 	
 	// instantiate edge detector to generate synchronous read signal
 	EdgeDetector #(
@@ -81,61 +100,22 @@ module SerialReadBuffer_test();
 		#(2*CLK_PERIOD_NS);
 		
 		// send 8 bits of data
-		data_to_send = 8'h3a; // byte to send is indexed as msb
-		signal_in_line = 1'b1;
-		#(in_line_CLK_PERIOD_NS);
-		for (i = 7; i >= 0; i--) // send most significat bit first
-		begin
-			data_clk = 1'b0;
-			in_line = data_to_send[i];
-			#(in_line_CLK_PERIOD_NS / 2);
-			data_clk = 1'b1;
-			#(in_line_CLK_PERIOD_NS / 2);
-		end
-		data_clk = 1'b0;
-		in_line = 1'b0;
-		#(in_line_CLK_PERIOD_NS);
-		signal_in_line = 1'b0;
+		data_to_send = 8'h3a;
+		send_data(8);
 		
 		// wait random time
-		#(in_line_CLK_PERIOD_NS + 517);
+		#(IN_LINE_CLK_PERIOD_NS + 517);
 		
 		// send 6 bits of data
-		data_to_send = 6'o52; // byte to send is indexed as msb
-		signal_in_line = 1'b1;
-		#(in_line_CLK_PERIOD_NS);
-		for (i = 5; i >= 0; i--) // send most significat bit first
-		begin
-			data_clk = 1'b0;
-			in_line = data_to_send[i];
-			#(in_line_CLK_PERIOD_NS / 2);
-			data_clk = 1'b1;
-			#(in_line_CLK_PERIOD_NS / 2);
-		end
-		data_clk = 1'b0;
-		in_line = 1'b0;
-		#(in_line_CLK_PERIOD_NS);
-		signal_in_line = 1'b0;
+		data_to_send = 6'o52;
+		send_data(6);
 		
 		// wait random time
-		#(in_line_CLK_PERIOD_NS + 1119);
+		#(IN_LINE_CLK_PERIOD_NS + 1119);
 		
 		// send 4 bits of data
-		data_to_send = 4'hf; // byte to send is indexed as msb
-		signal_in_line = 1'b1;
-		#(in_line_CLK_PERIOD_NS);
-		for (i = 3; i >= 0; i--) // send most significat bit first
-		begin
-			data_clk = 1'b0;
-			in_line = data_to_send[i];
-			#(in_line_CLK_PERIOD_NS / 2);
-			data_clk = 1'b1;
-			#(in_line_CLK_PERIOD_NS / 2);
-		end
-		data_clk = 1'b0;
-		in_line = 1'b0;
-		#(in_line_CLK_PERIOD_NS);
-		signal_in_line = 1'b0;
+		data_to_send = 4'hf;
+		send_data(4);
 	end
 	
 	// test code

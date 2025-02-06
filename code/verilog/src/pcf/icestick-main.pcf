@@ -1,0 +1,17 @@
+#
+# - main system and i/o constraints for Icestick FPGA
+#
+
+# system inputs
+set_io                  ref_clk         21
+
+# user inputs
+set_io  -pullup yes     rst_btn         119
+set_io  -pullup yes     mode_btn        118
+
+# user outputs
+set_io                  mode_leds[0]    99
+set_io                  mode_leds[1]    98
+set_io                  mode_leds[2]    97
+set_io                  mode_leds[3]    96
+set_io                  comm_active_led 95

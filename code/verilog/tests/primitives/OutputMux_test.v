@@ -12,10 +12,10 @@ module OutputMux_test();
 	
 	localparam WIDTH = 4;
 	
-	// internal signals
+	// test signals
 	wire [WIDTH-1:0] out_line;
 	
-	// internal registers
+	// test registers
 	reg [WIDTH-1:0] in_line0 = 0;
 	reg [WIDTH-1:0] in_line1 = 0;
 	reg [WIDTH-1:0] select_line = 4'b0000;

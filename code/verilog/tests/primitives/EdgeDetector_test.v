@@ -14,10 +14,10 @@ module EdgeDetector_test();
 	
 	localparam FALL_EDGE = 1;
 	
-	// internal signals
+	// test signals
 	wire edge_sig;
 	
-	// internal registers
+	// test registers
 	reg sys_clk = 1'b0;
 	reg sig = 1'b0;
 	

@@ -16,16 +16,26 @@ module SignalDebouncer_test();
 	localparam IN_ACTIVE_LOW = 1;
 	localparam OUT_ACTIVE_LOW = 0;
 	
-	// internal signals
+	// test signals
 	wire out_sig;
 	
-	// internal registers
+	// test registers
 	reg sys_clk = 1'b0;
 	reg in_sig = 1'b1;
 	
-	// helper variables
-	integer i;
-	integer n;
+	// helper task to simulate noisy random signal
+	task gen_noisy_signal();
+		integer n;
+		integer i;
+		
+		// noisy signal bounces
+		n = $urandom % 50;
+		for (i = 0; i < n; i++)
+		begin
+			in_sig = ~in_sig;
+			#($urandom % 100);
+		end
+	endtask
 	
 	// instantiate uut
 	SignalDebouncer #(
@@ -51,52 +61,32 @@ module SignalDebouncer_test();
 		// wait some time for initialization
 		#1000;
 		
-		// generate noisy random signal bounces
-		n = $urandom % 50;
-		for (i = 0; i < n; i++)
-		begin
-			in_sig = ~in_sig;
-			#($urandom % 100);
-		end
+		// noisy signal
+		gen_noisy_signal();
 		// set real signal value
 		in_sig = 1'b0;
 		
 		// wait some time for next signal
 		#(5 * CLK_PERIOD_NS * DEBOUNCE_COUNT + 1234);
 		
-		// generate noisy random signal bounces
-		n = $urandom % 50;
-		for (i = 0; i < n; i++)
-		begin
-			in_sig = ~in_sig;
-			#($urandom % 100);
-		end
+		// noisy signal
+		gen_noisy_signal();
 		// set real signal value
 		in_sig = 1'b1;
 		
 		// wait some time for next signal
 		#(5 * CLK_PERIOD_NS * DEBOUNCE_COUNT + 2431);
 		
-		// generate noisy random signal bounces
-		n = $urandom % 50;
-		for (i = 0; i < n; i++)
-		begin
-			in_sig = ~in_sig;
-			#($urandom % 100);
-		end
+		// noisy signal
+		gen_noisy_signal();
 		// set real signal value
 		in_sig = 1'b0;
 		
 		// wait some time for next signal
 		#(5 * CLK_PERIOD_NS * DEBOUNCE_COUNT + 987);
 		
-		// generate noisy random signal bounces
-		n = $urandom % 50;
-		for (i = 0; i < n; i++)
-		begin
-			in_sig = ~in_sig;
-			#($urandom % 100);
-		end
+		// noisy signal
+		gen_noisy_signal();
 		// set real signal value
 		in_sig = 1'b1;
 	end

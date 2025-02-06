@@ -18,28 +18,42 @@ module UartDriver_test();
 	
 	localparam NUM_DATA_BITS = 12;
 	
-	// internal signals
-	wire tx_out;
-	
+	// test signals
 	wire rx_new_data;
 	wire rx_ready;
 	wire tx_ready;
 	
 	wire [NUM_DATA_BITS-1:0] rx_data;
 	
-	// internal registers
+	wire tx_out;
+	
+	// test registers
 	reg sys_clk = 1'b0;
 	reg rst = 1'b0;
 	
-	reg rx_in = 1'b1;
-	
-	reg cmd_tx_start = 1'b0;
+	reg tx_start = 1'b0;
 	
 	reg [NUM_DATA_BITS-1:0] tx_data;
 	
+	reg rx_in = 1'b1;
+	
 	// helper variables
-	integer i;
 	reg [NUM_DATA_BITS-1:0] rx_data_to_send;
+	
+	// helper task to simulate a frame being received on RX line
+	task simulate_frame();
+		integer i;
+		
+		rx_in = 1'b0; // start bit
+		#(BIT_DURATION_NS);
+		for (i = 0; i < NUM_DATA_BITS; i++) // send least significat bit first
+		begin
+			rx_in = rx_data_to_send[i];
+			#(BIT_DURATION_NS);
+		end
+		rx_in = 1'b1;	// stop bit
+		#(BIT_DURATION_NS);
+	endtask
 	
 	// instantiate uut
 	UartDriver #(
@@ -49,19 +63,17 @@ module UartDriver_test();
 		.sys_clk(sys_clk),
 		.rst(rst),
 		
-		.rx_in(rx_in),
-		
-		.cmd_tx_start(cmd_tx_start),
-		
-		.tx_data(tx_data),
-		
-		.tx_out(tx_out),
+		.tx_start(tx_start),
 		
 		.rx_new_data(rx_new_data),
 		.rx_ready(rx_ready),
 		.tx_ready(tx_ready),
 
-		.rx_data(rx_data)
+		.rx_data(rx_data),
+		.tx_data(tx_data),
+		
+		.rx_in(rx_in),
+		.tx_out(tx_out)
 	);
 	
 	// generate sys_clock signal
@@ -79,51 +91,21 @@ module UartDriver_test();
 		
 		// generate communication
 		rx_data_to_send = {12'h4ca};
-		
-		// send data with defined baud rate
-		rx_in = 1'b0;	// start bit
-		#(BIT_DURATION_NS);
-		for (i = 0; i < NUM_DATA_BITS; i++) // send least significat bit first
-		begin
-			rx_in = rx_data_to_send[i];
-			#(BIT_DURATION_NS);
-		end
-		rx_in = 1'b1;	// stop bit
-		#(BIT_DURATION_NS);
+		simulate_frame();
 		
 		// wait random time
 		#(BIT_DURATION_NS + 697);
 		
 		// generate more communication
 		rx_data_to_send = {12'hf10};
-		
-		// send data with defined baud rate
-		rx_in = 1'b0;	// start bit
-		#(BIT_DURATION_NS);
-		for (i = 0; i < NUM_DATA_BITS; i++) // send least significat bit first
-		begin
-			rx_in = rx_data_to_send[i];
-			#(BIT_DURATION_NS);
-		end
-		rx_in = 1'b1;	// stop bit
-		#(BIT_DURATION_NS);
+		simulate_frame();
 		
 		// wait random time
 		#(BIT_DURATION_NS/2 + 1223);
 		
 		// generate more communication
 		rx_data_to_send = {12'h51d};
-		
-		// send data with defined baud rate
-		rx_in = 1'b0;	// start bit
-		#(BIT_DURATION_NS);
-		for (i = 0; i < NUM_DATA_BITS; i++) // send least significat bit first
-		begin
-			rx_in = rx_data_to_send[i];
-			#(BIT_DURATION_NS);
-		end
-		rx_in = 1'b1;	// stop bit
-		#(BIT_DURATION_NS);
+		simulate_frame();
 	end
 	
 	// test sending some data on TX line
@@ -144,9 +126,9 @@ module UartDriver_test();
 		tx_data <= {12'h4f6};
 		
 		// tx start command
-		cmd_tx_start = 1'b1;
+		tx_start = 1'b1;
 		#(CLK_PERIOD_NS);
-		cmd_tx_start = 1'b0;
+		tx_start = 1'b0;
 
 		// wait for buffer to be ready
 		wait (tx_ready == 1'b1);
@@ -158,9 +140,9 @@ module UartDriver_test();
 		tx_data <= {12'h0b5};
 		
 		// tx start command
-		cmd_tx_start = 1'b1;
+		tx_start = 1'b1;
 		#(CLK_PERIOD_NS);
-		cmd_tx_start = 1'b0;
+		tx_start = 1'b0;
 		
 		// wait for buffer to be ready
 		wait (tx_ready == 1'b1);
@@ -172,9 +154,9 @@ module UartDriver_test();
 		tx_data <= {12'he91};
 		
 		// tx start command
-		cmd_tx_start = 1'b1;
+		tx_start = 1'b1;
 		#(CLK_PERIOD_NS);
-		cmd_tx_start = 1'b0;
+		tx_start = 1'b0;
 	end
 	
 	// run simulation (output to .vcd file)

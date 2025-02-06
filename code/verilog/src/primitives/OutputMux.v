@@ -1,7 +1,7 @@
 /**
  * Output multiplexer:
- * - for each of the input bus lines has two inputs and a selector input
- * - each bit of the selector input toggles between the two corresponding BUS line bits
+ * - for each of the input lines has two inputs and a selector input
+ * - each bit of the selector input toggles between the two corresponding line bits
  * - the inputs, outputs and selector bits are organized in WIDTH wide lines
 **/
 

@@ -10,26 +10,54 @@ module IoHandler_test();
 	// local constants
 	localparam SYS_CLK = 12_000_000;	// 12 MHz
 	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
-	localparam SIM_DURATION = 30_000;	// 30 us
+	localparam SIM_DURATION = 50_000;	// 50 us
 	
 	localparam MODE_WIDTH = 4;
 	localparam BUTTON_ACTIVE_LOW = 1;
-	localparam DEBOUNCE_COUNT = 16;
+	localparam DEBOUNCE_COUNT = 8;
 	
-	// internal signals
+	// test signals
 	wire [MODE_WIDTH-1:0] mode_select;
 	wire [MODE_WIDTH-1:0] mode_leds;
 	wire comm_active_led;
 	
-	// internal registers
+	// test registers
 	reg sys_clk = 1'b0;
 	reg mode_select_btn = 1'b1;
-
 	reg comm_active = 1'b0;
 	
 	// helper variables
 	integer i;
-	integer n;
+	
+	// helper task to simulate noisy button presses
+	task simulate_noisy_btn_press();
+		integer n;
+		integer i;
+		
+		// noisy signal bounces
+		n = $urandom % 30;
+		for (i = 0; i < n; i++)
+		begin
+			mode_select_btn = ~mode_select_btn;
+			#($urandom % 100);
+		end
+		
+		// actual button pressed
+		mode_select_btn = (BUTTON_ACTIVE_LOW == 0) ? 1'b1 : 1'b0;
+		#(DEBOUNCE_COUNT * CLK_PERIOD_NS + $urandom % 500 + 100);
+		
+		// noisy signal bounces
+		n = $urandom % 30;
+		for (i = 0; i < n; i++)
+		begin
+			mode_select_btn = ~mode_select_btn;
+			#($urandom % 100);
+		end
+		
+		// button released
+		mode_select_btn = (BUTTON_ACTIVE_LOW == 0) ? 1'b0 : 1'b1;
+		#(DEBOUNCE_COUNT * CLK_PERIOD_NS + $urandom % 500 + 100);
+	endtask
 
 	// instantiate uut
 	IoHandler #( 
@@ -58,65 +86,11 @@ module IoHandler_test();
 		// wait some time
 		#1000;
 	
-		// generate noisy random button bounces
-		n = $urandom % 50;
-		for (i = 0; i < n; i++)
+		// generate noisy random button presses
+		for (i = 0; i < 9; i++)
 		begin
-			mode_select_btn = ~mode_select_btn;
-			#($urandom % 100);
+			simulate_noisy_btn_press();
 		end
-		// set button pressed
-		mode_select_btn = 1'b0;
-		
-		// wait some time
-		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 500);
-		
-		// generate noisy random button bounces
-		n = $urandom % 50;
-		for (i = 0; i < n; i++)
-		begin
-			mode_select_btn = ~mode_select_btn;
-			#($urandom % 100);
-		end
-		// set button released
-		mode_select_btn = 1'b1;
-		
-		
-		// wait some time
-		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 123);
-		// set button pressed
-		mode_select_btn = 1'b0;
-		// wait some time
-		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 498);
-		// set button released
-		mode_select_btn = 1'b1;
-		
-		// wait some time
-		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 258);
-		// set button pressed
-		mode_select_btn = 1'b0;
-		// wait some time
-		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 1235);
-		// set button released
-		mode_select_btn = 1'b1;
-		
-		// wait some time
-		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 1222);
-		// set button pressed
-		mode_select_btn = 1'b0;
-		// wait some time
-		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 973);
-		// set button released
-		mode_select_btn = 1'b1;
-		
-		// wait some time
-		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 2001);
-		// set button pressed
-		mode_select_btn = 1'b0;
-		// wait some time
-		#(CLK_PERIOD_NS * DEBOUNCE_COUNT + 1258);
-		// set button released
-		mode_select_btn = 1'b1;
 		
 		// test comm_active LED
 		comm_active = 1'b1;

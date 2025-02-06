@@ -18,12 +18,12 @@ module SerialWriteBuffer_test();
 	localparam ACTIVE_LOW = 0;
 	localparam WRITE_COUNT_SIZE = $clog2(BUF_SIZE+1);
 	
-	// internal signals
+	// test signals
 	wire out_line;
 	wire done_sig;
 	wire write_sig;
 	
-	// internal registers
+	// test registers
 	reg sys_clk = 1'b0;
 	reg data_clk = 1'b0; // virtual clock to write data on output line
 	reg rst = 1'b0;
@@ -32,9 +32,23 @@ module SerialWriteBuffer_test();
 	reg signal_out_line = 1'b0;
 	reg [WRITE_COUNT_SIZE-1:0] write_count = 0;
 	
-	// helper variables
-	integer i;
-	reg [0:7] data_to_send; // send most significat bit first
+	// helper task to generate output line clock
+	task gen_clock(input integer data_len);
+		integer i;
+		
+		signal_out_line = 1'b1;
+		#(out_line_CLK_PERIOD_NS);
+		for (i = 0; i < data_len; i++)
+		begin
+			data_clk = 1'b0;
+			#(out_line_CLK_PERIOD_NS / 2);
+			data_clk = 1'b1;
+			#(out_line_CLK_PERIOD_NS / 2);
+		end
+		data_clk = 1'b0;
+		#(out_line_CLK_PERIOD_NS);
+		signal_out_line = 1'b0;
+	endtask
 	
 	// instantiate edge detector to generate synchronous write signal
 	EdgeDetector #(
@@ -68,7 +82,7 @@ module SerialWriteBuffer_test();
 		sys_clk = ~sys_clk;
 	end
 	
-	// generate data output line clock
+	// generate output line clock
 	initial
 	begin
 		// wait some time
@@ -83,52 +97,19 @@ module SerialWriteBuffer_test();
 		#(2*CLK_PERIOD_NS);
 		
 		// clock 8 bits of data
-		signal_out_line = 1'b1;
-		#(out_line_CLK_PERIOD_NS);
-		for (i = 0; i < 8; i++)
-		begin
-			data_clk = 1'b0;
-			#(out_line_CLK_PERIOD_NS / 2);
-			data_clk = 1'b1;
-			#(out_line_CLK_PERIOD_NS / 2);
-		end
-		data_clk = 1'b0;
-		#(out_line_CLK_PERIOD_NS);
-		signal_out_line = 1'b0;
+		gen_clock(8);
 		
 		// wait random time
 		#(out_line_CLK_PERIOD_NS + 371);
 		
 		// clock 6 bits of data
-		signal_out_line = 1'b1;
-		#(out_line_CLK_PERIOD_NS);
-		for (i = 0; i < 6; i++)
-		begin
-			data_clk = 1'b0;
-			#(out_line_CLK_PERIOD_NS / 2);
-			data_clk = 1'b1;
-			#(out_line_CLK_PERIOD_NS / 2);
-		end
-		data_clk = 1'b0;
-		#(out_line_CLK_PERIOD_NS);
-		signal_out_line = 1'b0;
+		gen_clock(6);
 		
 		// wait random time
 		#(out_line_CLK_PERIOD_NS + 973);
 		
 		// clock 4 bits of data
-		signal_out_line = 1'b1;
-		#(out_line_CLK_PERIOD_NS);
-		for (i = 0; i < 4; i++)
-		begin
-			data_clk = 1'b0;
-			#(out_line_CLK_PERIOD_NS / 2);
-			data_clk = 1'b1;
-			#(out_line_CLK_PERIOD_NS / 2);
-		end
-		data_clk = 1'b0;
-		#(out_line_CLK_PERIOD_NS);
-		signal_out_line = 1'b0;
+		gen_clock(4);
 	end
 	
 	// test code
