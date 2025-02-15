@@ -36,7 +36,7 @@ module SpiMasterDriver_test();
 	
 	reg [NUM_DATA_BITS-1:0] mosi_data;
 	
-	reg miso_in = 1'b1;
+	reg miso_in = 1'b0;
 	
 	// helper variables
 	reg [NUM_DATA_BITS-1:0] miso_data_to_send;
@@ -51,10 +51,11 @@ module SpiMasterDriver_test();
 		// send data clocked by SCLK
 		for (i = NUM_DATA_BITS-1; i >= 0; i--) // send most significat bit first
 		begin
-			wait (sclk_out == 1'b0);	// wait for fall edge
 			miso_in = miso_data_to_send[i];
 			wait (sclk_out == 1'b1);	// wait for rise edge
+			wait (sclk_out == 1'b0);	// wait for fall edge
 		end
+		miso_in = 1'b0;
 		
 		// wait for SS to go inactive
 		wait (ss_out == ((SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1));
@@ -78,9 +79,9 @@ module SpiMasterDriver_test();
 		.miso_data(miso_data),
 		.mosi_data(mosi_data),
 
-		.miso_in(miso_in),
 		.ss_out(ss_out),
 		.sclk_out(sclk_out),
+		.miso_in(miso_in),
 		.mosi_out(mosi_out)
 	);
 	

@@ -5,6 +5,7 @@
  * - SPI mode 0 (CPOL = 0, CPHA = 0)is hardcoded
  * - the CLOCK_DIV parameter defines the colock speed (the system clock is devided by this value) and must be even (in case it is odd, CLOCK_DIV - 1 is used)
  * - the SS_ACTIVE_LOW parameter defines whether the SS line is active low
+ * - the LSB_FIRST parameter defines bit order of data
  * - the NUM_DATA_BITS parameter defines the number of bits per transaction (both MOSI and MISO)
 **/
 
@@ -33,9 +34,9 @@ module SpiMasterDriver #(
 	input wire [NUM_DATA_BITS-1:0] mosi_data,
 	
 	// bus lines
-	input wire miso_in,
 	output reg ss_out = (SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1,
 	output wire sclk_out,
+	input wire miso_in,
 	output wire mosi_out
 );
 
