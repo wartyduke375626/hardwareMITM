@@ -7,7 +7,7 @@ set_io                  ref_clk         21
 
 # user inputs
 set_io  -pullup yes     rst_btn         119
-set_io  -pullup yes     mode_btn        118
+set_io  -pullup yes     mode_select_btn 118
 
 # user outputs
 set_io                  mode_leds[0]    99

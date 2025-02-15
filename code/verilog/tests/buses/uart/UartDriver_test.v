@@ -20,7 +20,6 @@ module UartDriver_test();
 	
 	// test signals
 	wire rx_new_data;
-	wire rx_ready;
 	wire tx_ready;
 	
 	wire [NUM_DATA_BITS-1:0] rx_data;
@@ -66,7 +65,6 @@ module UartDriver_test();
 		.tx_start(tx_start),
 		
 		.rx_new_data(rx_new_data),
-		.rx_ready(rx_ready),
 		.tx_ready(tx_ready),
 
 		.rx_data(rx_data),
@@ -90,14 +88,14 @@ module UartDriver_test();
 		#(4*CLK_PERIOD_NS);
 		
 		// generate communication
-		rx_data_to_send = {12'h4ca};
+		rx_data_to_send = {12'h4c5};
 		simulate_frame();
 		
 		// wait random time
 		#(BIT_DURATION_NS + 697);
 		
 		// generate more communication
-		rx_data_to_send = {12'hf10};
+		rx_data_to_send = {12'hf01};
 		simulate_frame();
 		
 		// wait random time
@@ -123,7 +121,7 @@ module UartDriver_test();
 		wait (tx_ready == 1'b1);
 		
 		// send some data over TX line
-		tx_data <= {12'h4f6};
+		tx_data <= {12'h0b5};
 		
 		// tx start command
 		tx_start = 1'b1;
@@ -137,7 +135,7 @@ module UartDriver_test();
 		#(2*BIT_DURATION_NS + 1354);
 		
 		// send some more data over TX line
-		tx_data <= {12'h0b5};
+		tx_data <= {12'h4e6};
 		
 		// tx start command
 		tx_start = 1'b1;

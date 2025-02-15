@@ -1,9 +1,10 @@
 # This Makefile module includes rules for building the final binary for the icestick FPGA
 
+REF_FREQ=12
 SYS_FREQ=48
+PLL_DEFINES=$(shell ./plldefines.sh $(REF_FREQ) $(SYS_FREQ))
 
-
-YOSYS_FLAGS=-q -p
+YOSYS_FLAGS=$(PLL_DEFINES) -q -p
 YOSYS_CMD=synth_ice40 -relut
 
 NEXTPNR_FLAGS=--hx1k --package tq144 --freq $(SYS_FREQ) --opt-timing
@@ -12,9 +13,8 @@ ICEPACK_FLAGS=-s
 
 ICETIME_FLAGS=-d hx1k -P tq144 -c $(SYS_FREQ) -t
 
-
-
-
+test:
+	echo $(PLL_DEFINES)
 
 # Build icestick binary
 $(BIN_DIR)/icestick-uart.bin: $(PNR_DIR)/icestick-uart.asc $(RPT_DIR)/icestick-uart.rpt | $(BIN_DIR)

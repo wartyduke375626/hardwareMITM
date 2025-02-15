@@ -5,23 +5,29 @@
 // define timescale
 `timescale 1 ns / 10 ps
 
+// general configuration
+`define TEST_FREQ_HZ 12_000_000
+`define DEBOUNCE_DURATION_US 1
+`define MODE_WIDTH 4
+`define NUM_DATA_BITS 8
+
+// bus specific configuration
+`define UART_BAUD_RATE 115_200
+
 // set UART bus
 `define BUS_UART 1
 
 module UartTopLevelModule_test();
 
 	// local constants
-	localparam REF_FREQ_HZ = 12_000_000;	// 12 MHz
-	localparam CLK_PERIOD_NS = 1_000_000_000 / REF_FREQ_HZ;
-	localparam SIM_DURATION = 1_000_000;	// 1000 us
+	localparam CLK_PERIOD_NS = 1_000_000_000 / `TEST_FREQ_HZ;
+	localparam SIM_DURATION = 2_000_000;	// 2000 us
 	
-	localparam DEBOUNCE_COUNT = 16;
-	localparam MODE_WIDTH = 4;
+	localparam DEBOUNCE_DURATION_US = `DEBOUNCE_DURATION_US;
+	localparam MODE_WIDTH = `MODE_WIDTH;
 	
-	localparam NUM_DATA_BITS = 8;
-	localparam UART_BAUD_RATE = 300_000;
-	
-	localparam BIT_DURATION_NS = 1_000_000_000 / UART_BAUD_RATE;
+	localparam NUM_DATA_BITS = `NUM_DATA_BITS;
+	localparam BIT_DURATION_NS = 1_000_000_000 / `UART_BAUD_RATE;
 	
 	// internal signals
 	wire [MODE_WIDTH-1:0] mode_leds;
@@ -34,7 +40,7 @@ module UartTopLevelModule_test();
 	reg ref_clk = 1'b0;
 	
 	reg rst_btn = 1'b1;
-	reg mode_btn = 1'b1;
+	reg mode_select_btn = 1'b1;
 	
 	reg if0_rx_in = 1'b1;
 	reg if1_rx_in = 1'b1;
@@ -77,42 +83,36 @@ module UartTopLevelModule_test();
 		for (i = 0; i < n; i++)
 		begin
 			if (btn == "RST") begin rst_btn = ~rst_btn; end
-			if (btn == "MODE") begin mode_btn = ~mode_btn; end
+			if (btn == "MODE") begin mode_select_btn = ~mode_select_btn; end
 			#($urandom % 100);
 		end
 		
 		// actual button pressed
 		if (btn == "RST") begin rst_btn = 1'b0; end
-		if (btn == "MODE") begin mode_btn = 1'b0; end
-		#(DEBOUNCE_COUNT * CLK_PERIOD_NS + $urandom % 200 + 100);
+		if (btn == "MODE") begin mode_select_btn = 1'b0; end
+		#(1_000 * DEBOUNCE_DURATION_US + 3 * CLK_PERIOD_NS + $urandom % 200);
 		
 		// noisy button press
 		n = $urandom % 50;
 		for (i = 0; i < n; i++)
 		begin
 			if (btn == "RST") begin rst_btn = ~rst_btn; end
-			if (btn == "MODE") begin mode_btn = ~mode_btn; end
+			if (btn == "MODE") begin mode_select_btn = ~mode_select_btn; end
 			#($urandom % 100);
 		end
 		
 		// button released
 		if (btn == "RST") begin rst_btn = 1'b1; end
-		if (btn == "MODE") begin mode_btn = 1'b1; end
-		#(CLK_PERIOD_NS + $urandom % 500 + 100);
+		if (btn == "MODE") begin mode_select_btn = 1'b1; end
+		#(5 * CLK_PERIOD_NS + $urandom % 500);
 	endtask
 	
 	// instantiate uut
-	TopLevelModule #(
-		.REF_FREQ_HZ(REF_FREQ_HZ),
-		.DEBOUNCE_COUNT(DEBOUNCE_COUNT),
-		.MODE_WIDTH(MODE_WIDTH),
-		.NUM_DATA_BITS(NUM_DATA_BITS),
-		.UART_BAUD_RATE(UART_BAUD_RATE)
-	) UUT (
+	TopLevelModule UUT (
 		.ref_clk(ref_clk),
 		
 		.rst_btn(rst_btn),
-		.mode_btn(mode_btn),
+		.mode_select_btn(mode_select_btn),
 		
 		.mode_leds(mode_leds),
 		.comm_active_led(comm_active_led),
@@ -133,8 +133,8 @@ module UartTopLevelModule_test();
 	// generate some communication on input bus lines
 	initial
 	begin
-		// wait some time for initialization
-		#(5 * DEBOUNCE_COUNT * CLK_PERIOD_NS);
+		// wait some time for initial reset and initialization
+		#(1_000 * DEBOUNCE_DURATION_US + 10 * CLK_PERIOD_NS);
 		
 		// send a frame on interface 0
 		if0_rx_data_to_send = {8'hca};

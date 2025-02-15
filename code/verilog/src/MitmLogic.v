@@ -81,7 +81,7 @@ module MitmLogic #(
 					fake_if1_send_select <= 1'b1;
 					
 					if (if0_recv_new_data_ready == 1'b1) begin
-						fake_if1_send_data <= 36;	// 0x24 -- $ sign
+						fake_if1_send_data <= 'h24;	// $ sign
 						fake_if1_send_start <= 1'b1;
 					end
 					else begin
@@ -97,7 +97,7 @@ module MitmLogic #(
 					fake_if1_send_select <= 1'b1;
 					
 					if (if1_recv_new_data_ready == 1'b1) begin
-						fake_if0_send_data <= 35;	// 0x23 -- # sign
+						fake_if0_send_data <= 'h23;	// # sign
 						fake_if0_send_start <= 1'b1;
 					end
 					else begin
@@ -106,14 +106,27 @@ module MitmLogic #(
 					
 				end
 				
-				// perform ROT 13 encoding on if0->if1, decoding on if1->if0
+				// perform ROT 13 on if0->if1 and if1->if0 (ROT13 is inverse to itself)
 				MODE_ROT_13: begin
 				
 					fake_if0_send_select <= 1'b1;
 					fake_if1_send_select <= 1'b1;
 					
 					if (if0_recv_new_data_ready == 1'b1) begin
-						fake_if1_send_data <= real_if0_recv_data + 13;
+						
+						// for A-M,a-m we rotate by +13
+						if ((real_if0_recv_data >= 65 && real_if0_recv_data <= 77) || (real_if0_recv_data >= 97 && real_if0_recv_data <= 109)) begin
+							fake_if1_send_data <= real_if0_recv_data + 13;
+						end
+						// for N-Z,n-z we rotate by -13 (+13 == -13 mod 26)
+						else if ((real_if0_recv_data >= 78 && real_if0_recv_data <= 90) || (real_if0_recv_data >= 110 && real_if0_recv_data <= 122)) begin
+							fake_if1_send_data <= real_if0_recv_data - 13;
+						end
+						// else don't rotate
+						else begin
+							fake_if1_send_data <= real_if0_recv_data;
+						end
+						
 						fake_if1_send_start <= 1'b1;
 					end
 					else begin
@@ -121,7 +134,20 @@ module MitmLogic #(
 					end
 					
 					if (if1_recv_new_data_ready == 1'b1) begin
-						fake_if0_send_data <= real_if1_recv_data - 13;
+						
+						// for A-M,a-m we rotate by +13
+						if ((real_if1_recv_data >= 65 && real_if1_recv_data <= 77) || (real_if1_recv_data >= 97 && real_if1_recv_data <= 109)) begin
+							fake_if0_send_data <= real_if1_recv_data + 13;
+						end
+						// for N-Z,n-z we rotate by -13 (+13 == -13 mod 26)
+						else if ((real_if1_recv_data >= 78 && real_if1_recv_data <= 90) || (real_if1_recv_data >= 110 && real_if1_recv_data <= 122)) begin
+							fake_if0_send_data <= real_if1_recv_data - 13;
+						end
+						// else don't rotate
+						else begin
+							fake_if0_send_data <= real_if1_recv_data;
+						end
+						
 						fake_if0_send_start <= 1'b1;
 					end
 					else begin

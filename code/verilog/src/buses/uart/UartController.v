@@ -57,16 +57,6 @@ module UartController #(
 	assign if0_tx_start = if0_tx_write_ready & fake_if0_tx_start;
 	assign if1_tx_start = if1_tx_write_ready & fake_if1_tx_start;
 	
-	// driver status
-	wire if0_rx_ready;
-	wire if1_rx_ready;
-	wire if0_rx_new_data;
-	wire if1_rx_new_data;
-	
-	assign if0_rx_new_data_ready = if0_rx_ready & if0_rx_new_data;
-	assign if1_rx_new_data_ready = if1_rx_ready & if1_rx_new_data;
-	
-	
 	/******************** MODULE INSTANTIATION ********************/
 	
 	// First UART interface
@@ -77,8 +67,7 @@ module UartController #(
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.tx_start(if0_tx_start),
-		.rx_new_data(if0_rx_new_data),
-		.rx_ready(if0_rx_ready),
+		.rx_new_data(if0_rx_new_data_ready),
 		.tx_ready(if0_tx_write_ready),
 		.rx_data(real_if0_receive_data),
 		.tx_data(fake_if0_transmit_data),
@@ -94,8 +83,7 @@ module UartController #(
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.tx_start(if1_tx_start),
-		.rx_new_data(if1_rx_new_data),
-		.rx_ready(if1_rx_ready),
+		.rx_new_data(if1_rx_new_data_ready),
 		.tx_ready(if1_tx_write_ready),
 		.rx_data(real_if1_receive_data),
 		.tx_data(fake_if1_transmit_data),

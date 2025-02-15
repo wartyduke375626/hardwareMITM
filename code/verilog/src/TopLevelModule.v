@@ -9,28 +9,14 @@
 	`include "config.vh"
 `endif
 
-module TopLevelModule #(
-
-	// parameters applicable for test benches
-	`ifdef BENCH
-		parameter REF_FREQ_HZ = 12_000_000,
-		
-		parameter DEBOUNCE_COUNT = 1_048_576,
-		parameter MODE_WIDTH = 4,
-		
-		parameter NUM_DATA_BITS = 8,
-		`ifdef BUS_UART
-			parameter UART_BAUD_RATE = 115_200
-		`endif
-	`endif
-) (
+module TopLevelModule (
 
 	// system inputs
 	input wire ref_clk,
 	
 	// user inputs
 	input wire rst_btn,
-	input wire mode_btn,
+	input wire mode_select_btn,
 	
 	// user outputs
 	output wire [MODE_WIDTH-1:0] mode_leds,
@@ -54,12 +40,27 @@ module TopLevelModule #(
 	`endif
 );
 
-	// local constants
+	// set local parameters according to configuration
+	
+	// system clock frequency
 	`ifdef BENCH
-		localparam SYS_FREQ_HZ = REF_FREQ_HZ;	// for test benches sys_clk = ref_clk
+		localparam SYS_FREQ_HZ = `TEST_FREQ_HZ;	// for test benches we have a simulated clock (no PLL)
 	`else
-		localparam SYS_FREQ_HZ = 1_000_000 * SYS_FREQ;
-		localparam DEBOUNCE_COUNT = 1_048_576;
+		localparam SYS_FREQ_HZ = 1_000_000 * `SYS_FREQ;
+		localparam PLL_DIVR = `PLL_DIVR;
+		localparam PLL_DIVF = `PLL_DIVF;
+		localparam PLL_DIVQ = `PLL_DIVQ;
+		localparam PLL_FILTER_RANGE = `PLL_FILTER_RANGE;
+	`endif
+	
+	// general parameters
+	localparam DEBOUNCE_DURATION_US = `DEBOUNCE_DURATION_US;
+	localparam MODE_WIDTH = `MODE_WIDTH;
+	localparam NUM_DATA_BITS =`NUM_DATA_BITS;
+	
+	// bus specific parameters
+	`ifdef BUS_UART
+		localparam UART_BAUD_RATE = `UART_BAUD_RATE;
 	`endif
 	
 	// internal signals
@@ -123,41 +124,34 @@ module TopLevelModule #(
 		// PLL (48 MHz)
 		// specific module to iCE40 FPGAs
 		SB_PLL40_CORE #(
-			.FEEDBACK_PATH("SIMPLE"),	// don't use fine delay adjustment
-			.PLLOUT_SELECT("GENCLK"),	// no phase shift on output
-			.DIVR(4'b0000),				// reference clock divider
-			.DIVF(7'b0111111),			// feedback clock divider
-			.DIVQ(3'b100),				// VCO clock divider
-			.FILTER_RANGE(3'b001)		// filter range
+			.FEEDBACK_PATH("SIMPLE"),		// don't use fine delay adjustment
+			.PLLOUT_SELECT("GENCLK"),		// no phase shift on output
+			.DIVR(PLL_DIVR),				// reference clock divider
+			.DIVF(PLL_DIVF),				// feedback clock divider
+			.DIVQ(PLL_DIVQ),				// VCO clock divider
+			.FILTER_RANGE(PLL_FILTER_RANGE)	// filter range
 		) pll (
-			.REFERENCECLK(ref_clk),		// input clock
-			.PLLOUTCORE(sys_clk),		// output clock
-			.LOCK(),					// locked signal (don't connect)
-			.RESETB(1'b1),				// active low reset
-			.BYPASS(1'b0)				// no bypass, use PLL signal as output
+			.REFERENCECLK(ref_clk),			// input clock
+			.PLLOUTCORE(sys_clk),			// output clock
+			.LOCK(),						// locked signal (don't connect)
+			.RESETB(1'b1),					// active low reset
+			.BYPASS(1'b0)					// no bypass, use PLL signal as output
 		);
 	`endif
-	
-	// Reset button debouncer
-	SignalDebouncer #(
-		.DEBOUNCE_COUNT(DEBOUNCE_COUNT),
-		.IN_ACTIVE_LOW(1),	// reset button is active low
-		.OUT_ACTIVE_LOW(0)	// reset for internal logic is active high
-	) rstDebouncer (
-		.sys_clk(sys_clk),
-		.in_sig(rst_btn),
-		.out_sig(rst)
-	);
 	
 	// User I/O handler module
 	IoHandler #(
 		.MODE_WIDTH(MODE_WIDTH),
-		.BUTTON_ACTIVE_LOW(1),	// mode select button is active low
-		.DEBOUNCE_COUNT(DEBOUNCE_COUNT)
+		.BUTTONS_ACTIVE_LOW(1),	// buttons are active high
+		.DEBOUNCED_RST_ACTIVE_LOW(0),	// reset signal for internal logic is active high
+		.SYS_FREQ_HZ(SYS_FREQ_HZ),
+		.DEBOUNCE_DURATION_US(DEBOUNCE_DURATION_US)
 	) ioHandler (
 		.sys_clk(sys_clk),
-		.mode_select_btn(mode_btn),
+		.rst_btn(rst_btn),
+		.mode_select_btn(mode_select_btn),
 		.comm_active(comm_active),
+		.debounced_rst(rst),
 		.mode_select(mode_select),
 		.mode_leds(mode_leds),
 		.comm_active_led(comm_active_led)
@@ -186,7 +180,7 @@ module TopLevelModule #(
 		.SYS_FREQ_HZ(SYS_FREQ_HZ),
 		.NUM_DATA_BITS(NUM_DATA_BITS),
 		`ifdef BUS_UART
-			.UART_BAUD_RATE(UART_BAUD_RATE)
+			.UART_BAUD_RATE(`UART_BAUD_RATE)
 		`endif
 	) busInterface (
 		.sys_clk(sys_clk),

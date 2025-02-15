@@ -1,44 +1,39 @@
 /**
- * Simulation of Pulse signal generator module.
+ * Simulation of Counter module.
 **/
 
 // define timescale
 `timescale 1 ns / 10 ps
 
-module PulseGenerator_test();
+module Counter_test();
 
 	// local constants
 	localparam SYS_CLK = 12_000_000;	// 12 MHz
 	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
-	localparam SIM_DURATION = 30_000;	// 30 us
+	localparam SIM_DURATION = 10_000;	// 10 us
 
-	localparam CYCLE_COUNT = 6;
-	localparam CYCLE_LEN = 8;
-	localparam PULSE_LEN = 1;
-	localparam DELAY = 7;
-	localparam ACTIVE_LOW = 0;
+	localparam MAX_N = 9;
+	localparam CTR_SIZE = $clog2(MAX_N+1);
 	
 	// test signals
-	wire out_sig;
+	wire [CTR_SIZE-1:0] ctr_val;
 	wire done_sig;
 	
 	// test registers
 	reg sys_clk = 1'b0;
 	reg rst = 1'b0;
 	reg start = 1'b0;
+	reg [CTR_SIZE-1:0] n_val = 0;
 	
 	// instantiate uut
-	PulseGenerator #(
-		.CYCLE_COUNT(CYCLE_COUNT),
-		.CYCLE_LEN(CYCLE_LEN),
-		.PULSE_LEN(PULSE_LEN),
-		.DELAY(DELAY),
-		.ACTIVE_LOW(ACTIVE_LOW)
+	Counter #(
+		.MAX_N(MAX_N)
 	) UUT (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.start(start),
-		.out_sig(out_sig),
+		.n_val(n_val),
+		.ctr_val(ctr_val),
 		.done_sig(done_sig)
 	);
 	
@@ -63,40 +58,43 @@ module PulseGenerator_test();
 		// wait some time for initialization
 		#(2*CLK_PERIOD_NS);
 		
-		// send signal to start generating signal
+		// send signal to start counting
+		n_val = 7;
 		start = 1'b1;
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
 		
-		// wait while signal generator is busy
+		// wait while counter is busy
 		wait (done_sig == 1'b1);
 		
 		// wait some time
 		#2000;
 		
-		// send signal to start generating signal
+		// send signal to start counting
+		n_val = 9;
 		start = 1'b1;
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
 		
 		// generate random reset signal
-		#3172;
+		#1172;
 		rst = 1'b1;
 		#(CLK_PERIOD_NS);
 		rst = 1'b0;
 		
-		// wait while signal generator is busy
+		// wait while counter is busy
 		wait (done_sig == 1'b1);
 		
 		// wait some time
 		#2000;
 		
-		// send signal to start generating signal
+		// send signal to start counting
+		n_val = 3;
 		start = 1'b1;
 		#(CLK_PERIOD_NS);
 		start = 1'b0;
 		
-		// wait while signal generator is busy
+		// wait while counter is busy
 		wait (done_sig == 1'b1);
 	end
 	
@@ -105,8 +103,8 @@ module PulseGenerator_test();
 	begin
 		
 		// create simulation output file
-		$dumpfile("PulseGenerator_test.vcd");
-		$dumpvars(0, PulseGenerator_test);
+		$dumpfile("Counter_test.vcd");
+		$dumpvars(0, Counter_test);
 		
 		// wait for simulation to complete
 		#(SIM_DURATION);

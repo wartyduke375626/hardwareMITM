@@ -28,6 +28,7 @@ bin: $(BIN_DIR)/icestick-uart.bin
 
 # Run all simulations
 sim: \
+		$(SIM_DIR)/primitives/Counter_test.vcd \
 		$(SIM_DIR)/primitives/EdgeDetector_test.vcd \
 		$(SIM_DIR)/primitives/OutputMux_test.vcd \
 		$(SIM_DIR)/primitives/PulseGenerator_test.vcd \
@@ -36,6 +37,7 @@ sim: \
 		$(SIM_DIR)/io/IoHandler_test.vcd \
 		$(SIM_DIR)/io/SignalDebouncer_test.vcd \
 		$(SIM_DIR)/io/Synchronizer_test.vcd \
+		$(SIM_DIR)/buses/spi/SpiMasterDriver_test.vcd \
 		$(SIM_DIR)/buses/uart/UartController_test.vcd \
 		$(SIM_DIR)/buses/uart/UartDriver_test.vcd \
 		$(SIM_DIR)/UartTopLevelModule_test.vcd \
