@@ -16,10 +16,11 @@ module SpiMasterDriver_test();
 	localparam SS_ACTIVE_LOW = 1;
 	localparam LSB_FIRST = 0;
 	
-	localparam NUM_DATA_BITS = 16;
+	localparam NUM_DATA_BITS = 8;
 	
 	// test signals
-	wire bus_ready;
+	wire mosi_ready;
+	wire mosi_done;
 	wire miso_new_data;
 	
 	wire [NUM_DATA_BITS-1:0] miso_data;
@@ -32,7 +33,8 @@ module SpiMasterDriver_test();
 	reg sys_clk = 1'b0;
 	reg rst = 1'b0;
 	
-	reg comm_start = 1'b0;
+	reg mosi_start = 1'b0;
+	reg keep_alive = 1'b0;
 	
 	reg [NUM_DATA_BITS-1:0] mosi_data;
 	
@@ -45,7 +47,7 @@ module SpiMasterDriver_test();
 	task simulate_slave();
 		integer i;
 		
-		// wait for SS to go active
+		// wait for SS to be active
 		wait (ss_out == ((SS_ACTIVE_LOW == 0) ? 1'b1 : 1'b0));
 		
 		// send data clocked by SCLK
@@ -56,9 +58,6 @@ module SpiMasterDriver_test();
 			wait (sclk_out == 1'b0);	// wait for fall edge
 		end
 		miso_in = 1'b0;
-		
-		// wait for SS to go inactive
-		wait (ss_out == ((SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1));
 	endtask
 	
 	// instantiate uut
@@ -71,9 +70,11 @@ module SpiMasterDriver_test();
 		.sys_clk(sys_clk),
 		.rst(rst),
 		
-		.comm_start(comm_start),
+		.mosi_start(mosi_start),
+		.keep_alive(keep_alive),
 		
-		.bus_ready(bus_ready),
+		.mosi_ready(mosi_ready),
+		.mosi_done(mosi_done),
 		.miso_new_data(miso_new_data),
 		
 		.miso_data(miso_data),
@@ -96,19 +97,19 @@ module SpiMasterDriver_test();
 	initial
 	begin
 		// generate communication
-		miso_data_to_send = {16'h4ac5};
+		miso_data_to_send = {8'hc5};
 		simulate_slave();
 		
 		// generate communication
-		miso_data_to_send = {16'h16fb};
+		miso_data_to_send = {8'h6b};
 		simulate_slave();
 		
 		// generate communication
-		miso_data_to_send = {16'h35d9};
+		miso_data_to_send = {8'hd9};
 		simulate_slave();
 	end
 	
-	// test spi master communication
+	// test SPI master communication
 	initial
 	begin
 		// wait some time
@@ -119,47 +120,66 @@ module SpiMasterDriver_test();
 		#(CLK_PERIOD_NS);
 		rst = 1'b0;
 	
-		// wait for bus to be ready
-		wait (bus_ready == 1'b1);
+		// wait for MOSI to be ready
+		wait (mosi_ready == 1'b1);
 		
-		// send some data on MOSI line
-		mosi_data <= {16'h0cf7};
+		// send some data on MOSI line -- no keep-alive
+		mosi_data <= {8'hcf};
 		
-		// communication start command
-		comm_start = 1'b1;
+		// MOSI start command
+		mosi_start = 1'b1;
 		#(CLK_PERIOD_NS);
-		comm_start = 1'b0;
+		mosi_start = 1'b0;
 
-		// wait for bus to be ready
-		wait (bus_ready == 1'b1);
+		// wait for MOSI to be ready
+		wait (mosi_ready == 1'b1);
 		
 		// wait some time before sending more data
 		#(3*CLK_PERIOD_NS + 1354);
 		
-		// send some more data on MOSI line
-		mosi_data <= {16'h37e1};
+		// send two bytes on MOSI line -- with keep-alive
+		mosi_data <= {8'h37};
+		keep_alive <= 1'b1;
 		
-		// communication start command
-		comm_start = 1'b1;
+		// MOSI start command
+		mosi_start = 1'b1;
 		#(CLK_PERIOD_NS);
-		comm_start = 1'b0;
+		mosi_start = 1'b0;
 
-		// wait for bus to be ready
-		wait (bus_ready == 1'b1);
+		// wait for MOSI to be ready
+		wait (mosi_ready == 1'b1);
 		
-		// wait some time before sending more data
-		#(3*CLK_PERIOD_NS + 637);
+		// send second byte on MOSI line
+		mosi_data <= {8'h2f};
 		
-		// send some more data on MOSI line
-		mosi_data <= {16'h2fa0};
-		
-		// communication start command
-		comm_start = 1'b1;
+		// MOSI start command
+		mosi_start = 1'b1;
 		#(CLK_PERIOD_NS);
-		comm_start = 1'b0;
+		mosi_start = 1'b0;
+		
+		// turn off keep-alive
+		keep_alive <= 1'b0;
 
-		// wait for bus to be ready
-		wait (bus_ready == 1'b1);
+		// wait for MOSI to be ready
+		wait (mosi_ready == 1'b1);
+		
+		// send some more data on MOSI line -- with keep-alive
+		mosi_data <= {8'ha0};
+		keep_alive <= 1'b1;
+		
+		// MOSI start command
+		mosi_start = 1'b1;
+		#(CLK_PERIOD_NS);
+		mosi_start = 1'b0;
+		
+		// wait for MOSI to be ready
+		wait (mosi_ready == 1'b1);
+		
+		// test turning off keep-alive late -- should result in abort of communication
+		keep_alive <= 1'b0;
+		
+		// wait for MOSI to be ready
+		wait (mosi_ready == 1'b1);
 	end
 	
 	// run simulation (output to .vcd file)

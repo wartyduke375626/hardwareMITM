@@ -5,7 +5,7 @@
  * - SPI mode 0 (CPOL = 0, CPHA = 0)is hardcoded
  * - the SS_ACTIVE_LOW parameter defines whether the SS line is active low
  * - the LSB_FIRST parameter defines bit order of data
- * - the NUM_DATA_BITS parameter defines the number of bits per transaction (both MOSI and MISO)
+ * - the NUM_DATA_BITS parameter defines the number of bits to buffer (one transaction may contain multiple MISO/MOSI send/recv buffering sessions)
 **/
 
 module SpiSlaveDriver #(
@@ -21,10 +21,11 @@ module SpiSlaveDriver #(
 	input wire rst,
 	
 	// control inputs
-	input wire miso_send_enable,
+	input wire miso_start,
 
 	// status outputs
-	output reg bus_ready = 1'b0,
+	output reg miso_ready = 1'b0,
+	output reg miso_done = 1'b0,
 	output reg mosi_new_data = 1'b0,
 	
 	// data
@@ -48,29 +49,24 @@ module SpiSlaveDriver #(
 	wire sclk_rise_edge;
 	wire sclk_fall_edge;
 	
-	// buffer control signals
-	wire miso_buf_start;
-	assign miso_buf_start = buf_start & miso_send_enable;
-	
 	// status signals
 	wire miso_buf_done;
 	wire mosi_buf_done;
 	
-	wire buf_done;
-	assign buf_done = miso_buf_done & mosi_buf_done;
-	
 	// internal registers
 	
 	// control
-	reg buf_start = 1'b0;
+	reg miso_buf_start = 1'b0;
+	reg mosi_buf_start = 1'b0;
 	reg buf_rst = 1'b0;
 	
 	// states
 	localparam STATE_IDLE = 3'd0;
-	localparam STATE_COMM_START = 3'd1;
-	localparam STATE_COMM_WAIT = 3'd2;
-	localparam STATE_COMM_FINISH = 3'd3;
-	localparam STATE_RESET = 3'd4;
+	localparam STATE_MISO_READY = 3'd1;
+	localparam STATE_COMM_START = 3'd2;
+	localparam STATE_COMM_WAIT_MOSI = 3'd3;
+	localparam STATE_COMM_WAIT_MISO = 3'd4;
+	localparam STATE_RESET = 3'd5;
 	
 	reg	[2:0] state = STATE_RESET;
 	
@@ -79,7 +75,7 @@ module SpiSlaveDriver #(
 	begin
 		// on reset go to reset state
 		if (rst == 1'b1) begin
-			bus_ready <= 1'b0;
+			miso_ready <= 1'b0;
 			state <= STATE_RESET;
 		end
 		
@@ -87,23 +83,50 @@ module SpiSlaveDriver #(
 			// state transition logic
 			case (state)
 				
-				// in idle state wait for SS line to go active and start buffering
+				// in idle state wait for SS to go active, then signal that MISO is ready to send data and go to next state
 				STATE_IDLE: begin
 					if (ss_in == ((SS_ACTIVE_LOW == 0) ? 1'b1 : 1'b0)) begin
-						bus_ready <= 1'b0;
-						buf_start <= 1'b1;
+						miso_ready <= 1'b1;
+						mosi_buf_start <= 1'b1;
+						state <= STATE_MISO_READY;
+					end
+				end
+				
+				// in MISO ready state wait for signal to start MISO send -- we have time until the first rising edge on SCLK
+				STATE_MISO_READY: begin
+					mosi_new_data <= 1'b0;
+					miso_done <= 1'b0;
+					mosi_buf_start <= 1'b0;
+					
+					// if SS goes inactive -- transaction is over, reset buffers and go to reset state
+					if (ss_in == ((SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1)) begin
+						miso_ready <= 1'b0;
+						buf_rst <= 1'b1;
+						state <= STATE_RESET;
+					end
+					
+					// if first rising edge on SCLK occured it is too late for MISO to start sending -- go to waiting state
+					else if (sclk_rise_edge == 1'b1) begin
+						miso_ready <= 1'b0;
+						state <= STATE_COMM_WAIT_MOSI;
+					end
+					
+					// else if we detect MISO start signal we can start sending data
+					else if (miso_start == 1'b1) begin
+						miso_ready <= 1'b0;
+						miso_buf_start <= 1'b1;
 						state <= STATE_COMM_START;
 					end
 				end
 				
-				// delay one clock cycle for buffers to process inputs
+				// delay one clock cycle for buffer to process inputs
 				STATE_COMM_START: begin
-					buf_start <= 1'b0;
-					state <= STATE_COMM_WAIT;
+					miso_buf_start <= 1'b0;
+					state <= STATE_COMM_WAIT_MOSI;
 				end
 				
-				// wait for buffering to finish
-				STATE_COMM_WAIT: begin
+				// wait for MOSI buffer to finish (read buffer ends first as it reads on rising edge)
+				STATE_COMM_WAIT_MOSI: begin
 				
 					// if SS goes inactive unexpectedly, reset buffers and go to reset state
 					if (ss_in == ((SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1)) begin
@@ -111,35 +134,47 @@ module SpiSlaveDriver #(
 						state <= STATE_RESET;
 					end
 					
-					// else wait for buffering to finish
-					else if (buf_done == 1'b1) begin
+					// else signal new MOSI data received when buffer is done
+					else if (mosi_buf_done == 1'b1) begin
 						mosi_new_data <= 1'b1;
-						state <= STATE_COMM_FINISH;
+						state <= STATE_COMM_WAIT_MISO;
 					end
 				end
 				
-				// wait for SS to go inactive, signal ready and go to idle state
-				STATE_COMM_FINISH: begin
+				// wait for MISO buffer to finish (write buffer ends second as it writes on falling edge) go back to MISO ready state for next communication
+				STATE_COMM_WAIT_MISO: begin
 					mosi_new_data <= 1'b0;
 					
+					// if SS goes inactive unexpectedly, reset buffers and go to reset state
 					if (ss_in == ((SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1)) begin
-						bus_ready <= 1'b1;
-						state <= STATE_IDLE;
+						miso_done <= 1'b1;
+						buf_rst <= 1'b1;
+						state <= STATE_RESET;
+					end
+					
+					// else, when buffer is done (and clock is low), go back to MISO ready state for next communication
+					else if (miso_buf_done & ~sclk_in == 1'b1) begin
+						miso_done <= 1'b1;
+						miso_ready <= 1'b1;
+						mosi_buf_start <= 1'b1;
+						state <= STATE_MISO_READY;
 					end
 				end
 				
 				// reset internal state
 				STATE_RESET: begin
-					buf_start <= 1'b0;
+					miso_buf_start <= 1'b0;
+					mosi_buf_start <= 1'b0;
 					buf_rst <= 1'b0;
 					mosi_new_data <= 1'b0;
-					bus_ready <= 1'b1;	
+					miso_done <= 1'b0;
+					miso_ready <= 1'b0;
 					state <= STATE_IDLE;
 				end
 				
 				// this should never occur
 				default: begin
-					bus_ready <= 1'b0;
+					miso_ready <= 1'b0;
 					state <= STATE_RESET;
 				end
 				
@@ -175,7 +210,7 @@ module SpiSlaveDriver #(
 	) mosiReadBuffer (
 		.sys_clk(sys_clk),
 		.rst(rst | buf_rst),
-		.start(buf_start),
+		.start(mosi_buf_start),
 		.read_sig(sclk_rise_edge),
 		.in_line(mosi_in),
 		.read_count(BUF_SIZE[BIT_COUNT_WIDTH-1:0]),

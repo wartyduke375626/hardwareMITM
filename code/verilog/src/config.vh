@@ -19,3 +19,8 @@
 
 // UART:
 `define	UART_BAUD_RATE 115_200
+
+// SPI
+`define SPI_FREQ_HZ 1_000_000
+`define SPI_SS_ACTIVE_LOW 1
+`define SPI_LSB_FIRST 0

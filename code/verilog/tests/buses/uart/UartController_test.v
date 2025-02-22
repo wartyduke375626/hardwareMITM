@@ -22,6 +22,8 @@ module UartController_test();
 	wire if1_rx_new_data_ready;
 	wire if0_tx_write_ready;
 	wire if1_tx_write_ready;
+	wire if0_tx_write_done;
+	wire if1_tx_write_done;
 	
 	wire [NUM_DATA_BITS-1:0] real_if0_receive_data;
 	wire [NUM_DATA_BITS-1:0] real_if1_receive_data;
@@ -84,6 +86,8 @@ module UartController_test();
 		.if1_rx_new_data_ready(if1_rx_new_data_ready),
 		.if0_tx_write_ready(if0_tx_write_ready),
 		.if1_tx_write_ready(if1_tx_write_ready),
+		.if0_tx_write_done(if0_tx_write_done),
+		.if1_tx_write_done(if1_tx_write_done),
 		
 		.fake_if0_transmit_data(fake_if0_transmit_data),
 		.fake_if1_transmit_data(fake_if1_transmit_data),

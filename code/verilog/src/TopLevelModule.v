@@ -29,14 +29,14 @@ module TopLevelModule (
 		output wire if0_tx_out,
 		output wire if1_tx_out
 	`elsif BUS_SPI
+		input wire if0_ss_in,
+		input wire if0_sclk_in,
 		input wire if1_miso_in,
 		input wire if0_mosi_in,
-		input wire if0_sclk_in,
-		input wire if0_ss_in,
-		output wire if0_miso_out,
-		output wire if1_mosi_out,
+		output wire if1_ss_out,
 		output wire if1_sclk_out,
-		output wire if1_ss_out
+		output wire if0_miso_out,
+		output wire if1_mosi_out
 	`endif
 );
 
@@ -61,6 +61,10 @@ module TopLevelModule (
 	// bus specific parameters
 	`ifdef BUS_UART
 		localparam UART_BAUD_RATE = `UART_BAUD_RATE;
+	`elsif BUS_SPI
+		localparam SPI_FREQ_HZ = `SPI_FREQ_HZ;
+		localparam SPI_SS_ACTIVE_LOW = `SPI_SS_ACTIVE_LOW;
+		localparam SPI_LSB_FIRST = `SPI_LSB_FIRST;
 	`endif
 	
 	// internal signals
@@ -74,10 +78,10 @@ module TopLevelModule (
 		wire sync_if0_rx_in;
 		wire sync_if1_rx_in;
 	`elsif BUS_SPI
+		wire sync_if0_ss_in;
+		wire sync_if0_sclk_in;
 		wire sync_if1_miso_in;
 		wire sync_if0_mosi_in;
-		wire sync_if0_sclk_in;
-		wire sync_if0_ss_in;
 	`endif
 	
 	// I/O connection to MITM logic
@@ -85,15 +89,19 @@ module TopLevelModule (
 	
 	// MITM logic connection to Bus interface
 	
-	wire fake_if0_send_select;
-	wire fake_if1_send_select;
+	wire fake_if0_select;
+	wire fake_if1_select;
 	wire fake_if0_send_start;
 	wire fake_if1_send_start;
+	wire fake_if0_keep_alive;
+	wire fake_if1_keep_alive;
 	
-	wire if0_recv_new_data_ready;
-	wire if1_recv_new_data_ready;
-	wire if0_send_ready;
-	wire if1_send_ready;
+	wire if0_recv_new_data;
+	wire if1_recv_new_data;
+	wire fake_if0_send_ready;
+	wire fake_if1_send_ready;
+	wire fake_if0_send_done;
+	wire fake_if1_send_done;
 	
 	wire [NUM_DATA_BITS-1:0] fake_if0_send_data;
 	wire [NUM_DATA_BITS-1:0] fake_if1_send_data;
@@ -105,10 +113,7 @@ module TopLevelModule (
 	`ifdef BUS_UART
 		assign comm_active = ~sync_if0_rx_in | ~sync_if1_rx_in | ~if0_tx_out | ~if1_tx_out;
 	`elsif BUS_SPI
-		assign comm_active = sync_if0_ss_in | if1_ss_out;
-		initial begin
-			$display("SPI not implemented yet.");
-		end
+		assign comm_active = (SPI_SS_ACTIVE_LOW == 0) ? (sync_if0_ss_in | if1_ss_out) : (~sync_if0_ss_in | ~if1_ss_out);
 	`else
 		initial begin
 			$display("Error: No supported bus was defined.");
@@ -170,8 +175,8 @@ module TopLevelModule (
 			.in_line({if0_rx_in, if1_rx_in}),
 			.out_line({sync_if0_rx_in, sync_if1_rx_in})
 		`elsif BUS_SPI
-			.in_line({if1_miso_in, if0_mosi_in, if0_sclk_in, if0_ss_in}),
-			.out_line({sync_if1_miso_in, sync_if0_mosi_in, sync_if0_sclk_in, sync_if0_ss_in})
+			.in_line({if0_ss_in, if0_sclk_in, if1_miso_in, if0_mosi_in}),
+			.out_line({sync_if0_ss_in, sync_if0_sclk_in, sync_if1_miso_in, sync_if0_mosi_in})
 		`endif
 	);
 	
@@ -181,20 +186,28 @@ module TopLevelModule (
 		.NUM_DATA_BITS(NUM_DATA_BITS),
 		`ifdef BUS_UART
 			.UART_BAUD_RATE(`UART_BAUD_RATE)
+		`elsif BUS_SPI
+			.SPI_FREQ_HZ(`SPI_FREQ_HZ),
+			.SPI_SS_ACTIVE_LOW(`SPI_SS_ACTIVE_LOW),
+			.SPI_LSB_FIRST(`SPI_LSB_FIRST)
 		`endif
 	) busInterface (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		
-		.fake_if0_send_select(fake_if0_send_select),
-		.fake_if1_send_select(fake_if1_send_select),
+		.fake_if0_select(fake_if0_select),
+		.fake_if1_select(fake_if1_select),
 		.fake_if0_send_start(fake_if0_send_start),
 		.fake_if1_send_start(fake_if1_send_start),
+		.fake_if0_keep_alive(fake_if0_keep_alive),
+		.fake_if1_keep_alive(fake_if1_keep_alive),
 		
-		.if0_recv_new_data_ready(if0_recv_new_data_ready),
-		.if1_recv_new_data_ready(if1_recv_new_data_ready),
-		.if0_send_ready(if0_send_ready),
-		.if1_send_ready(if1_send_ready),
+		.if0_recv_new_data(if0_recv_new_data),
+		.if1_recv_new_data(if1_recv_new_data),
+		.fake_if0_send_ready(fake_if0_send_ready),
+		.fake_if1_send_ready(fake_if1_send_ready),
+		.fake_if0_send_done(fake_if0_send_done),
+		.fake_if1_send_done(fake_if1_send_done),
 		
 		.fake_if0_send_data(fake_if0_send_data),
 		.fake_if1_send_data(fake_if1_send_data),
@@ -207,14 +220,14 @@ module TopLevelModule (
 			.if0_tx_out(if0_tx_out),
 			.if1_tx_out(if1_tx_out)
 		`elsif BUS_SPI
+			.if0_ss_in(sync_if0_ss_in),
+			.if0_sclk_in(sync_if0_sclk_in),
 			.if1_miso_in(sync_if1_miso_in),
 			.if0_mosi_in(sync_if0_mosi_in),
-			.if0_sclk_in(sync_if0_sclk_in),
-			.if0_ss_in(sync_if0_ss_in),
-			.if0_miso_out(if0_miso_out),
-			.if1_mosi_out(if1_mosi_out),
+			.if1_ss_out(if1_ss_out),
 			.if1_sclk_out(if1_sclk_out),
-			.if1_ss_out(if1_ss_out)
+			.if0_miso_out(if0_miso_out),
+			.if1_mosi_out(if1_mosi_out)
 		`endif
 	);
 	
@@ -227,15 +240,19 @@ module TopLevelModule (
 		
 		.mode_select(mode_select),
 		
-		.fake_if0_send_select(fake_if0_send_select),
-		.fake_if1_send_select(fake_if1_send_select),
+		.fake_if0_select(fake_if0_select),
+		.fake_if1_select(fake_if1_select),
 		.fake_if0_send_start(fake_if0_send_start),
 		.fake_if1_send_start(fake_if1_send_start),
+		.fake_if0_keep_alive(fake_if0_keep_alive),
+		.fake_if1_keep_alive(fake_if1_keep_alive),
 		
-		.if0_recv_new_data_ready(if0_recv_new_data_ready),
-		.if1_recv_new_data_ready(if1_recv_new_data_ready),
-		.if0_send_ready(if0_send_ready),
-		.if1_send_ready(if1_send_ready),
+		.if0_recv_new_data(if0_recv_new_data),
+		.if1_recv_new_data(if1_recv_new_data),
+		.fake_if0_send_ready(fake_if0_send_ready),
+		.fake_if1_send_ready(fake_if1_send_ready),
+		.fake_if0_send_done(fake_if0_send_done),
+		.fake_if1_send_done(fake_if1_send_done),
 		
 		.fake_if0_send_data(fake_if0_send_data),
 		.fake_if1_send_data(fake_if1_send_data),

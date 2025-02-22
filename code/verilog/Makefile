@@ -23,7 +23,9 @@ include test.mk
 
 
 # Build all binaries
-bin: $(BIN_DIR)/icestick-uart.bin
+bin: \
+		$(BIN_DIR)/icestick-spi.bin \
+		$(BIN_DIR)/icestick-uart.bin;
 
 
 # Run all simulations
@@ -37,10 +39,12 @@ sim: \
 		$(SIM_DIR)/io/IoHandler_test.vcd \
 		$(SIM_DIR)/io/SignalDebouncer_test.vcd \
 		$(SIM_DIR)/io/Synchronizer_test.vcd \
+		$(SIM_DIR)/buses/spi/SpiController_test.vcd \
 		$(SIM_DIR)/buses/spi/SpiMasterDriver_test.vcd \
 		$(SIM_DIR)/buses/spi/SpiSlaveDriver_test.vcd \
 		$(SIM_DIR)/buses/uart/UartController_test.vcd \
 		$(SIM_DIR)/buses/uart/UartDriver_test.vcd \
+		$(SIM_DIR)/SpiTopLevelModule_test.vcd \
 		$(SIM_DIR)/UartTopLevelModule_test.vcd \
 		$(SIM_DIR)/proprietary_eeprom/MitmLogic_test.vcd \
 		$(SIM_DIR)/proprietary_eeprom/BusControl_test.vcd \

@@ -185,18 +185,18 @@ module UartTopLevelModule_test();
 		#(12 * BIT_DURATION_NS);
 		
 		// send 3 frames on interface 0 and 1 simultaniously
-		if0_rx_data_to_send = {8'h97};
-		if1_rx_data_to_send = {8'hd1};
+		if0_rx_data_to_send = {8'h62};
+		if1_rx_data_to_send = {8'h4f};
 		simulate_frame(1, 1);
-		if0_rx_data_to_send = {8'haa};
-		if1_rx_data_to_send = {8'h3e};
+		if0_rx_data_to_send = {8'h5a};
+		if1_rx_data_to_send = {8'h68};
 		simulate_frame(1, 1);
 		
 		// wait random time
 		#(334);
 		
 		if0_rx_data_to_send = {8'hf4};
-		if1_rx_data_to_send = {8'h25};
+		if1_rx_data_to_send = {8'h69};
 		simulate_frame(1, 1);
 		
 		// signal end of session

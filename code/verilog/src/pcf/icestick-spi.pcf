@@ -1,0 +1,15 @@
+#
+# - SPI constraints for Icestick FPGA
+#
+
+# interface 0
+set_io      if0_ss_in       87
+set_io      if0_sclk_in     88
+set_io      if0_miso_out    90
+set_io      if0_mosi_in     91
+
+# interface 1
+set_io      if1_ss_out      78
+set_io      if1_sclk_out    79
+set_io      if1_miso_in     80
+set_io      if1_mosi_out    81

@@ -4,8 +4,8 @@
 
 # interface 0
 set_io      if0_rx_in       87
-set_io      if0_tx_out		90
+set_io      if0_tx_out      90
 
 # interface 1
 set_io      if1_rx_in       80
-set_io      if1_tx_out		78
+set_io      if1_tx_out      78

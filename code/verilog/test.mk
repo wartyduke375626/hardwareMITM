@@ -47,6 +47,10 @@ $(SIM_DIR)/io/Synchronizer_test.vcd: $(VVP_DIR)/Synchronizer_test.vvp | $(SIM_DI
 
 
 # Buses:
+$(SIM_DIR)/buses/spi/SpiController_test.vcd: $(VVP_DIR)/SpiController_test.vvp | $(SIM_DIR)
+	vvp $<
+	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
+
 $(SIM_DIR)/buses/spi/SpiMasterDriver_test.vcd: $(VVP_DIR)/SpiMasterDriver_test.vvp | $(SIM_DIR)
 	vvp $<
 	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
@@ -65,6 +69,10 @@ $(SIM_DIR)/buses/uart/UartDriver_test.vcd: $(VVP_DIR)/UartDriver_test.vvp | $(SI
 
 
 # Top level module tests:
+$(SIM_DIR)/SpiTopLevelModule_test.vcd: $(VVP_DIR)/SpiTopLevelModule_test.vvp | $(SIM_DIR)
+	vvp $<
+	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
+
 $(SIM_DIR)/UartTopLevelModule_test.vcd: $(VVP_DIR)/UartTopLevelModule_test.vvp | $(SIM_DIR)
 	vvp $<
 	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
@@ -122,8 +130,15 @@ $(VVP_DIR)/Synchronizer_test.vvp: $(TEST_DIR)/io/Synchronizer_test.v $(SRC_DIR)/
 
 
 # Buses:
-$(VVP_DIR)/SpiMasterDriver_test.vvp: $(TEST_DIR)/buses/spi/SpiMasterDriver_test.v $(SRC_DIR)/buses/spi/SpiMasterDriver.v $(SRC_DIR)/primitives/Counter.v \
-		$(SRC_DIR)/primitives/PulseGenerator.v $(SRC_DIR)/primitives/SerialReadBuffer.v $(SRC_DIR)/primitives/SerialWriteBuffer.v | $(VVP_DIR)
+$(VVP_DIR)/SpiController_test.vvp: $(TEST_DIR)/buses/spi/SpiController_test.v $(SRC_DIR)/buses/spi/SpiController.v \
+		$(SRC_DIR)/buses/spi/SpiMasterDriver.v $(SRC_DIR)/buses/spi/SpiSlaveDriver.v $(SRC_DIR)/primitives/Counter.v \
+		$(SRC_DIR)/primitives/EdgeDetector.v $(SRC_DIR)/primitives/OutputMux.v $(SRC_DIR)/primitives/PulseGenerator.v \
+		$(SRC_DIR)/primitives/SerialReadBuffer.v $(SRC_DIR)/primitives/SerialWriteBuffer.v | $(VVP_DIR)
+	iverilog $(IV_FLAGS) $^ -o $@
+
+$(VVP_DIR)/SpiMasterDriver_test.vvp: $(TEST_DIR)/buses/spi/SpiMasterDriver_test.v $(SRC_DIR)/buses/spi/SpiMasterDriver.v \
+		$(SRC_DIR)/primitives/Counter.v $(SRC_DIR)/primitives/EdgeDetector.v $(SRC_DIR)/primitives/PulseGenerator.v \
+		$(SRC_DIR)/primitives/SerialReadBuffer.v $(SRC_DIR)/primitives/SerialWriteBuffer.v | $(VVP_DIR)
 	iverilog $(IV_FLAGS) $^ -o $@
 
 $(VVP_DIR)/SpiSlaveDriver_test.vvp: $(TEST_DIR)/buses/spi/SpiSlaveDriver_test.v $(SRC_DIR)/buses/spi/SpiSlaveDriver.v \
@@ -142,6 +157,10 @@ $(VVP_DIR)/UartDriver_test.vvp: $(TEST_DIR)/buses/uart/UartDriver_test.v $(SRC_D
 
 
 # Top level module tests:
+$(VVP_DIR)/SpiTopLevelModule_test.vvp: $(TEST_DIR)/SpiTopLevelModule_test.v $(SRC_DIR)/TopLevelModule.v $(SRC_DIR)/MitmLogic.v \
+		$(SRC_DIR)/buses/BusInterface.v $(SRC_DIR)/buses/spi/*.v $(SRC_DIR)/io/*.v $(SRC_DIR)/primitives/*.v | $(VVP_DIR)
+	iverilog $(IV_FLAGS) $^ -o $@
+
 $(VVP_DIR)/UartTopLevelModule_test.vvp: $(TEST_DIR)/UartTopLevelModule_test.v $(SRC_DIR)/TopLevelModule.v $(SRC_DIR)/MitmLogic.v \
 		$(SRC_DIR)/buses/BusInterface.v $(SRC_DIR)/buses/uart/*.v $(SRC_DIR)/io/*.v $(SRC_DIR)/primitives/*.v | $(VVP_DIR)
 	iverilog $(IV_FLAGS) $^ -o $@

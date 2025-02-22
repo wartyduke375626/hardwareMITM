@@ -3,16 +3,17 @@
  * - implements the SPI physical layer protocol on the master side
  * - provides an interface to send and receive data as SPI master
  * - SPI mode 0 (CPOL = 0, CPHA = 0)is hardcoded
- * - the CLOCK_DIV parameter defines the colock speed (the system clock is devided by this value) and must be even (in case it is odd, CLOCK_DIV - 1 is used)
+ * - SS setup and hold times are hardcoded to 1/4 of an SCLK period
+ * - the CLOCK_DIV parameter defines the colock speed (the system clock is devided by this value) and must be 0 mod 4 (otherwise it is rounded down)
  * - the SS_ACTIVE_LOW parameter defines whether the SS line is active low
  * - the LSB_FIRST parameter defines bit order of data
- * - the NUM_DATA_BITS parameter defines the number of bits per transaction (both MOSI and MISO)
+ * - the NUM_DATA_BITS parameter defines the number of bits to buffer (one transaction may contain multiple MISO/MOSI send/recv buffering sessions)
 **/
 
 module SpiMasterDriver #(
 
 	// parameters
-	parameter CLOCK_DIV = 6,
+	parameter CLOCK_DIV = 8,
 	parameter SS_ACTIVE_LOW = 1,
 	parameter LSB_FIRST = 0,
 	parameter NUM_DATA_BITS = 8
@@ -23,10 +24,12 @@ module SpiMasterDriver #(
 	input wire rst,
 	
 	// control inputs
-	input wire comm_start,
+	input wire mosi_start,
+	input wire keep_alive,
 
 	// status outputs
-	output reg bus_ready = 1'b0,
+	output reg mosi_ready = 1'b0,
+	output reg mosi_done = 1'b0,
 	output reg miso_new_data = 1'b0,
 	
 	// data
@@ -41,55 +44,51 @@ module SpiMasterDriver #(
 );
 
 	// local constants
-	localparam REAL_COLCK_DIV = CLOCK_DIV & (~1);	// clock div must be even
-	localparam DELAY_COUNT_1 = REAL_COLCK_DIV / 2;
-	localparam DELAY_COUNT_2 = REAL_COLCK_DIV;
-	localparam DELAY_CTR_SIZE = $clog2(DELAY_COUNT_2+1);	// storing A requires exactly ceil(lg(A+1)) bits
+	localparam REAL_COLCK_DIV = CLOCK_DIV & (~3);	// clock div must be 0 mod 4
 	localparam BUF_SIZE = NUM_DATA_BITS;
 	localparam BIT_COUNT_WIDTH = $clog2(BUF_SIZE+1);	// storing A requires exactly ceil(lg(A+1)) bits
+	localparam CTR_WIDTH = $clog2(REAL_COLCK_DIV+1);	// storing A requires exactly ceil(lg(A+1)) bits
 	
 	// internal signals
 	
-	// buffer control signals
-	wire miso_read_sig;
-	wire mosi_write_sig;
+	// edge signals
+	wire sclk_rise_edge;
+	wire sclk_fall_edge;
 	
 	// status signals
-	wire sclk_clk_done;
+	wire sclk_done;
 	wire miso_buf_done;
 	wire mosi_buf_done;
-	wire miso_sig_gen_done;
-	wire mosi_sig_gen_done;
-	wire delay_ctr_done;
-	
-	wire clk_and_buf_done;
-	assign clk_and_buf_done = sclk_clk_done & miso_buf_done & mosi_buf_done & miso_sig_gen_done & mosi_sig_gen_done;
+	wire finish_delay_done;
 	
 	// internal registers
 	
 	// control
-	reg clk_and_buf_start = 1'b0;
-	reg delay_ctr_start = 1'b0;
-	reg [DELAY_CTR_SIZE-1:0] delay_ctr_n_val;
+	reg sclk_start = 1'b0;
+	reg miso_buf_start = 1'b0;
+	reg mosi_buf_start = 1'b0;
+	reg finish_delay_start = 1'b0;
+	reg buf_and_clk_rst = 1'b0;
 	
 	// states
-	localparam STATE_IDLE = 3'd0;
-	localparam STATE_COMM_START = 3'd1;
-	localparam STATE_COMM_WAIT = 3'd2;
-	localparam STATE_DELAY_START_1 = 3'd3;
-	localparam STATE_DELAY_WAIT_1 = 3'd4;
-	localparam STATE_DELAY_START_2 = 3'd5;
-	localparam STATE_DELAY_WAIT_2 = 3'd6;
-	localparam STATE_RESET = 3'd7;
+	localparam STATE_IDLE = 4'd0;
+	localparam STATE_COMM_START = 4'd1;
+	localparam STATE_COMM_WAIT_MISO = 4'd2;
+	localparam STATE_COMM_WAIT_MOSI = 4'd3;
+	localparam STATE_COMM_KEEP_ALIVE = 4'd4;
+	localparam STATE_COMM_WAIT_SCLK = 4'd5;
+	localparam STATE_FINISH_DELAY_START = 4'd6;
+	localparam STATE_FINISH_DELAY_WAIT = 4'd7;
+	localparam STATE_RESET = 4'd8;
 	
-	reg	[2:0] state = STATE_RESET;
+	reg	[3:0] state = STATE_RESET;
 	
 	// SPI transaction control logic
 	always @ (posedge sys_clk)
 	begin
 		// on reset go to reset state
 		if (rst == 1'b1) begin
-			bus_ready <= 1'b0;
+			mosi_ready <= 1'b0;
 			state <= STATE_RESET;
 		end
 		
@@ -97,79 +96,131 @@ module SpiMasterDriver #(
 			// state transition logic
 			case (state)
 				
-				// in idle state wait for sommunication start signal and set SS to active mode and start clocking and buffering
+				// in idle state wait for sommunication start signal, set SS active and start clocking and buffering
 				STATE_IDLE: begin
-					ss_out <= (SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1;
-					
-					if (comm_start == 1'b1) begin
-						bus_ready <= 1'b0;
+					if (mosi_start == 1'b1) begin
+						mosi_ready <= 1'b0;
 						ss_out <= (SS_ACTIVE_LOW == 0) ? 1'b1 : 1'b0;
-						clk_and_buf_start <= 1'b1;
+						sclk_start <= 1'b1;
+						miso_buf_start <= 1'b1;
+						mosi_buf_start <= 1'b1;
 						state <= STATE_COMM_START;
 					end
 				end
 				
-				// delay one clock cycle for buffers, clock and pulse generators to process inputs
+				// delay one clock cycle for buffers and clock to process inputs
 				STATE_COMM_START: begin
-					clk_and_buf_start <= 1'b0;
-					state <= STATE_COMM_WAIT;
+					sclk_start <= 1'b0;
+					miso_buf_start <= 1'b0;
+					mosi_buf_start <= 1'b0;
+					state <= STATE_COMM_WAIT_MISO;
 				end
 				
-				// wait for clocking and buffering to finish, then we delay half SCLK cycle before SS goes inactive
-				STATE_COMM_WAIT: begin
-					if (clk_and_buf_done == 1'b1) begin
+				// wait for MISO buffer to finish (read buffer ends first as it reads on rising edge)
+				STATE_COMM_WAIT_MISO: begin
+					if (miso_buf_done == 1'b1) begin
 						miso_new_data <= 1'b1;
-						delay_ctr_n_val <= DELAY_COUNT_1[DELAY_CTR_SIZE-1:0];
-						delay_ctr_start <= 1'b1;
-						state <= STATE_DELAY_START_1;
+						state <= STATE_COMM_WAIT_MOSI;
 					end
 				end
 				
-				// delay one clock cycle for counter to process inputs
-				STATE_DELAY_START_1: begin
+				// wait for MOSI buffer to finish (write buffer ends second as it writes on falling edge)
+				// wait for buffering to finish (sclk always finishes 1/4 of a SCLK period later)
+				STATE_COMM_WAIT_MOSI: begin
 					miso_new_data <= 1'b0;
-					delay_ctr_start <= 1'b0;
-					state <= STATE_DELAY_WAIT_1;
-				end
-				
-				// wait for counter to finish, then we delay at least one SCLK cycle before being ready for next communication
-				STATE_DELAY_WAIT_1: begin
-					if (delay_ctr_done == 1'b1) begin
-						ss_out <= (SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1;
-						delay_ctr_n_val <= DELAY_COUNT_2[DELAY_CTR_SIZE-1:0];
-						delay_ctr_start <= 1'b1;
-						state <= STATE_DELAY_START_2;
+					
+					if (mosi_buf_done == 1'b1) begin
+						mosi_done <= 1'b1;
+						
+						// if keep-alive is set we can start processing the MISO input already
+						if (keep_alive == 1'b1) begin
+							mosi_ready <= 1'b1;
+							sclk_start <= 1'b1;
+							miso_buf_start <= 1'b1;
+							state <= STATE_COMM_KEEP_ALIVE;
+						end
+						
+						// else we go to wait for SCLK to be done before ending communication
+						else begin
+							state <= STATE_COMM_WAIT_SCLK;
+						end
 					end
 				end
 				
-				// delay one clock cycle for counter to process inputs
-				STATE_DELAY_START_2: begin
-					delay_ctr_start <= 1'b0;
-					state <= STATE_DELAY_WAIT_2;
+				// in keep-alive state wait for MOSI start signal -- we have time until the first rising edge on SCLK
+				STATE_COMM_KEEP_ALIVE: begin
+					miso_new_data <= 1'b0;
+					miso_buf_start <= 1'b0;
+					mosi_done <= 1'b0;
+					
+					// if keep-alive drops, abort communication and reset buffers/clock
+					if (keep_alive == 1'b0) begin
+						mosi_ready <= 1'b0;
+						sclk_start <= 1'b0;
+						ss_out <= (SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1;
+						buf_and_clk_rst <= 1'b1;
+						finish_delay_start <= 1'b1;
+						state <= STATE_FINISH_DELAY_START;
+					end
+					
+					// if first rising edge on SCLK occured it is too late for MOSI to start sending -- go to buffer waiting state
+					else if (sclk_rise_edge == 1'b1) begin
+						mosi_ready <= 1'b0;
+						state <= STATE_COMM_START;
+					end
+					
+					// else if we detect MOSI start signal we can start sending data
+					else if (mosi_start == 1'b1) begin
+						mosi_ready <= 1'b0;
+						mosi_buf_start <= 1'b1;
+						state <= STATE_COMM_START;
+					end
 				end
 				
-				// wait for counter to finish, then we are finally ready
-				STATE_DELAY_WAIT_2: begin
-					if (delay_ctr_done == 1'b1) begin
-						bus_ready <= 1'b1;
+				// wait for SCLK to finish before bringing SS to passive mode
+				STATE_COMM_WAIT_SCLK: begin
+					miso_new_data <= 1'b0;
+					mosi_done <= 1'b0;
+					
+					if (sclk_done == 1'b1) begin
+						ss_out <= (SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1;
+						finish_delay_start <= 1'b1;
+						state <= STATE_FINISH_DELAY_START;
+					end
+				end
+				
+				// delay one clock cycle for delay counter to process inputs
+				STATE_FINISH_DELAY_START: begin
+					buf_and_clk_rst <= 1'b0;
+					finish_delay_start <= 1'b0;
+					state <= STATE_FINISH_DELAY_WAIT;
+				end
+				
+				// wait for delay counter to finish, then go to idle state
+				STATE_FINISH_DELAY_WAIT: begin
+					if (finish_delay_done == 1'b1) begin
+						mosi_ready <= 1'b1;
 						state <= STATE_IDLE;
 					end
 				end
 				
 				// reset internal state
 				STATE_RESET: begin
-					clk_and_buf_start <= 1'b0;
-					delay_ctr_start <= 1'b0;
-					delay_ctr_n_val <= 0;
+					sclk_start <= 1'b0;
+					miso_buf_start <= 1'b0;
+					mosi_buf_start <= 1'b0;
+					finish_delay_start <= 1'b0;
+					buf_and_clk_rst <= 1'b0;
 					ss_out <= (SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1;
 					miso_new_data <= 1'b0;
-					bus_ready <= 1'b1;	
+					mosi_done <= 1'b0;
+					mosi_ready <= 1'b1;
 					state <= STATE_IDLE;
 				end
 				
 				// this should never occur
 				default: begin
-					bus_ready <= 1'b0;
+					mosi_ready <= 1'b0;
 					state <= STATE_RESET;
 				end
 				
@@ -180,46 +231,37 @@ module SpiMasterDriver #(
 	
 	/******************** MODULE INSTANTIATION ********************/
 	
-	// Delay counter
-	Counter #(
-		.MAX_N(DELAY_COUNT_2)
-	) delayCounter (
-		.sys_clk(sys_clk),
-		.rst(rst),
-		.start(delay_ctr_start),
-		.n_val(delay_ctr_n_val),
-		.ctr_val(),	// no connect -- we are using the counter only as delay
-		.done_sig(delay_ctr_done)
-	);
-	
 	// SCLK clock generator
 	PulseGenerator #(
 		.CYCLE_COUNT(BUF_SIZE),
 		.CYCLE_LEN(REAL_COLCK_DIV),
 		.PULSE_LEN(REAL_COLCK_DIV / 2),
-		.DELAY(REAL_COLCK_DIV / 2),
+		.DELAY(REAL_COLCK_DIV / 4),
 		.ACTIVE_LOW(0)
 	) sclkClockGen (
 		.sys_clk(sys_clk),
-		.rst(rst),
-		.start(clk_and_buf_start),
+		.rst(rst | buf_and_clk_rst),
+		.start(sclk_start),
 		.out_sig(sclk_out),
-		.done_sig(sclk_clk_done)
+		.done_sig(sclk_done)
 	);
 	
-	// MISO read sig generator
-	PulseGenerator #(
-		.CYCLE_COUNT(BUF_SIZE),
-		.CYCLE_LEN(REAL_COLCK_DIV),
-		.PULSE_LEN(1),
-		.DELAY(REAL_COLCK_DIV / 2),
-		.ACTIVE_LOW(0)
-	) misoReadSigGen (
+	// SCLK rise edge detector
+	EdgeDetector #(
+		.FALL_EDGE(0)
+	) sclkRiseEdgeDetect (
 		.sys_clk(sys_clk),
-		.rst(rst),
-		.start(clk_and_buf_start),
-		.out_sig(miso_read_sig),
-		.done_sig(miso_sig_gen_done)
+		.sig(sclk_out),
+		.edge_sig(sclk_rise_edge)
+	);
+	
+	// SCLK fall edge detector
+	EdgeDetector #(
+		.FALL_EDGE(1)
+	) sclkFallEdgeDetect (
+		.sys_clk(sys_clk),
+		.sig(sclk_out),
+		.edge_sig(sclk_fall_edge)
 	);
 	
 	// MISO read buffer
@@ -228,28 +270,13 @@ module SpiMasterDriver #(
 		.LSB_FIRST(LSB_FIRST)
 	) misoReadBuffer (
 		.sys_clk(sys_clk),
-		.rst(rst),
-		.start(clk_and_buf_start),
-		.read_sig(miso_read_sig),
+		.rst(rst | buf_and_clk_rst),
+		.start(miso_buf_start),
+		.read_sig(sclk_rise_edge),
 		.in_line(miso_in),
 		.read_count(BUF_SIZE[BIT_COUNT_WIDTH-1:0]),
 		.data_out(miso_data),
 		.done_sig(miso_buf_done)
-	);
-	
-	// MOSI write sig generator
-	PulseGenerator #(
-		.CYCLE_COUNT(BUF_SIZE),
-		.CYCLE_LEN(REAL_COLCK_DIV),
-		.PULSE_LEN(1),
-		.DELAY(REAL_COLCK_DIV - 1),
-		.ACTIVE_LOW(0)
-	) mosiWriteSigGen (
-		.sys_clk(sys_clk),
-		.rst(rst),
-		.start(clk_and_buf_start),
-		.out_sig(mosi_write_sig),
-		.done_sig(mosi_sig_gen_done)
 	);
 	
 	// MOSI write buffer
@@ -259,13 +286,25 @@ module SpiMasterDriver #(
 		.ACTIVE_LOW(0)
 	) mosiWriteBuffer (
 		.sys_clk(sys_clk),
-		.rst(rst),
-		.start(clk_and_buf_start),
-		.write_sig(mosi_write_sig),
+		.rst(rst | buf_and_clk_rst),
+		.start(mosi_buf_start),
+		.write_sig(sclk_fall_edge),
 		.data_in(mosi_data),
 		.write_count(BUF_SIZE[BIT_COUNT_WIDTH-1:0]),
 		.out_line(mosi_out),
 		.done_sig(mosi_buf_done)
+	);
+	
+	// Finish delay counter
+	Counter #(
+		.MAX_N(REAL_COLCK_DIV)
+	) finishDelayCounter (
+		.sys_clk(sys_clk),
+		.rst(rst),
+		.start(finish_delay_start),
+		.n_val(REAL_COLCK_DIV[CTR_WIDTH-1:0]),
+		.ctr_val(),	// no connect -- we are using the counter only as delay
+		.done_sig(finish_delay_done)
 	);
 	
 	/******************** ******************** ********************/

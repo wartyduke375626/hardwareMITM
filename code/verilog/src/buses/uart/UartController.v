@@ -27,6 +27,8 @@ module UartController #(
 	output wire if1_rx_new_data_ready,
 	output wire if0_tx_write_ready,
 	output wire if1_tx_write_ready,
+	output wire if0_tx_write_done,
+	output wire if1_tx_write_done,
 	
 	// data
 	input wire [NUM_DATA_BITS-1:0] fake_if0_transmit_data,
@@ -57,13 +59,16 @@ module UartController #(
 	assign if0_tx_start = if0_tx_write_ready & fake_if0_tx_start;
 	assign if1_tx_start = if1_tx_write_ready & fake_if1_tx_start;
 	
+	assign if0_tx_write_done = if0_tx_write_ready;
+	assign if1_tx_write_done = if1_tx_write_ready;
+	
 	/******************** MODULE INSTANTIATION ********************/
 	
 	// First UART interface
 	UartDriver #(
 		.BIT_DURATION(BIT_DURATION),
 		.NUM_DATA_BITS(NUM_DATA_BITS)
-	) UartInterface0 (
+	) uartInterface0 (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.tx_start(if0_tx_start),
@@ -79,7 +84,7 @@ module UartController #(
 	UartDriver #(
 		.BIT_DURATION(BIT_DURATION),
 		.NUM_DATA_BITS(NUM_DATA_BITS)
-	) UartInterface1 (
+	) uartInterface1 (
 		.sys_clk(sys_clk),
 		.rst(rst),
 		.tx_start(if1_tx_start),
