@@ -14,12 +14,37 @@
     pages={109-134}
 }
 
-@inproceedings{mitmPCIe,
+@article{mitmSmartphone,
     author={Khelif, Mohamed Amine and Lorandel, Jordane and Romain, Olivier and Regnery, Matthieu and Baheux, Denis and Barbu, Guillaume},
-    title={Toward a Hardware Man-in-the-Middle Attack on {PCIe} Bus for Smart Data Replay}, 
-    booktitle={2019 22nd Euromicro Conference on Digital System Design (DSD)}, 
-    year={2019},
-    pages={230-237}
+    title={Toward a hardware man-in-the-middle attack on {PCIe} bus}, 
+    journal={Microprocessors and Microsystems},
+    year={2020},
+    pages={103198},
+    doi={10.1016/j.micpro.2020.103198}
+}
+
+@article{mitmTPM,
+    author = {Winter, Johannes and Dietrich, Kurt},
+    title = {A hijacker’s guide to communication interfaces of the trusted platform module},
+    journal = {Computers \& Mathematics with Applications},
+    year = {2013},
+    doi = {10.1016/j.camwa.2012.06.018}
+}
+
+@inproceedings{mitmTouch,
+    author = {Omer Shwartz and Amir Cohen and Asaf Shabtai and Yossi Oren},
+    title = {Shattered Trust: When Replacement Smartphone Components Attack},
+    booktitle = {11th USENIX Workshop on Offensive Technologies (WOOT 17)},
+    year = {2017},
+    doi = {10.48550/arXiv.1805.04850}
+}
+
+@inproceedings{mitmI2C,
+    author = {Khelif, Mohamed Amine and Lorandel, Jordane and Romain, Olivier},
+    title = {Non-invasive I2C Hardware Trojan Attack Vector},
+    booktitle = {2021 IEEE International Symposium on Defect and Fault Tolerance in VLSI and Nanotechnology Systems (DFT)},
+    year = {2021},
+    doi = {10.1109/DFT52944.2021.9568347}
 }
 
 @inproceedings{mitmCAN,
@@ -29,38 +54,55 @@
     year={2020}
 }
 
-@inproceedings {mitmTouch,
-    author = {Omer Shwartz and Amir Cohen and Asaf Shabtai and Yossi Oren},
-    title = {Shattered Trust: When Replacement Smartphone Components Attack},
-    booktitle = {11th USENIX Workshop on Offensive Technologies (WOOT 17)},
-    year = {2017}
-}
-
-@inproceedings{mitmI2C,
-    author = {Khelif, Mohamed Amine and Lorandel, Jordane and Romain, Olivier},
-    title = {Non-invasive I2C Hardware Trojan Attack Vector},
-    year = {2021},
-}
-
-@misc{mitmSPI,
+@misc{mitmBitlocker,
     author={McDonald, Darren},
     title={Sniffing Bitlocker Keys on the {SPI} Bus},
     year={2021},
     note={[Citované 2024-01-30] Dostupné z \url{https://www.cryptic.red/post/sniffing-tpm-keys-on-the-spi-bus}}
 }
 
-@manual{i2cBus,
-    organization={NXP Semiconductors},
-    title={{UM10204} I2C-bus specification and user manual},
+@book{hwSec,
+    author = {Mukhopadhyay, Debdeep and Chakraborty, Rajat Subhra},
+    title = {Hardware Security: Design, Threats, and Safeguards},
+    year = {2014},
+    publisher = {Chapman \& {Hall/CRC}},
+    isbn = {143989583X}
+}
+
+@book{serdes,
+    author = {Athavale, Abhijit and Christensen, Carl},
+    title = {High-Speed Serial {I/O} Made Simple: A Designers' Guide, with {FPGA} Applications},
+    year = {2005},
+    publisher = {Xcell Publications}
+}
+
+@manual{tpmArch,
+    organization = {Trusted Computing Group},
+    title = {Trusted Platform Module Library Part 1: Architecture},
+    year = {2016},
+    number = {TPM 2.0},
+    note = {Rev. 01.38}
+}
+
+@manual{i2cSpec,
+    organization={{NXP} Semiconductors},
+    title={{UM10204} {I2C}-bus specification and user manual},
     year={2021},
     note={Rev. 7.0}
 }
 
-@manual{eepromDatasheet,
-    organization={Atmel Corporation},
-    title={Three-wire Serial {EEPROM}},
-    year={2021},
-    note={Rev. 7.0}
+@manual{pcieSpec,
+    organization = {{PCI} Special Interest Group},
+    title={{PCI} Express\textregistered Base Specification},
+    year = {2019},
+    note = {Rev. 5.0, Ver. 1.0}
+}
+
+@manual{uartBus,
+    organization={Texas Instruments},
+    title={{KeyStone Architecture Universal Asynchronous Receiver/Transmitter (UART)}},
+    year={2010},
+    note={Rev. 1.0}
 }
 
 @manual{spiBus,
@@ -68,4 +110,11 @@
     title={{MPC5121e Serial Peripheral Interface (SPI)}},
     year={2010},
     note={Rev. 0}
+}
+
+@manual{eepromDatasheet,
+    organization={Atmel Corporation},
+    title={Three-wire Serial {EEPROM}},
+    year={2021},
+    note={Rev. 7.0}
 }
