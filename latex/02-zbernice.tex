@@ -7,15 +7,21 @@ V tejto kapitole stručne spomenieme vybrané zbernicové protokoly a zhrnieme i
 V tejto časti spomenieme vybrané vlastnosti hardvérových zberníc a základnú kategorizáciu na základe týchto vlastností. Vlastnosti, ktoré opíšeme sú relevantné pre spôsob implementácie hardvérového MITM útoku na danej zbernici. Vlastnosti, ktoré nie sú relevantné, nebudeme popisovať.
 
 \subsection{Synchrónne a asynchrónne zbernice}
-Pre účel MITM útoku je veľmi dôležité rozlišovať medzi tzv. synchrónnymi a asynchrónnymi zbernicami. Synchrónne zbernice sa vyznačujú tým, že dátový signál je doplnený o synchronyzačný hodinový signál, ktorý riadi prenos dát na zbernici a umožňuje správne prečítať a dekódovať prenášané dáta. Takýto signál môže byť explicitne vysielaný na samostatnej linke, napr. zbernice SPI \cite{spiBus} a I\textsuperscript{2}C \cite{i2cSpec}.
+Pre účel MITM útoku je veľmi dôležité rozlišovať medzi tzv. synchrónnymi a asynchrónnymi zbernicami. Synchrónne zbernice sa vyznačujú tým, že dátový signál je doplnený o~synchronyzačný hodinový signál, ktorý riadi prenos dát na zbernici a umožňuje správne prečítať a dekódovať prenášané dáta. Takýto signál môže byť explicitne vysielaný na samostatnej linke, napr. zbernice SPI \cite{spiBus} a I\textsuperscript{2}C \cite{i2cSpec}. Tento spôsob synchronizácie je znázornený na obrázku \ref{obr:clockDemo}.
 
-Iný spôsob ako preniesť hodinový signál je zakódovať hodinový signál vrámci dátového. Prijímajúce zariadenie dokáže následne z prijatého signálu správne dekódovať synchronizované dáta. Tento spôsob synchrónneho prenosu dát sa využíva najmä pri vysokorýchlostných (angl. high-speed) sériových zberniciach \cite{serdes}, tzv. SerDes (Serializer-Deserializer), ako sú napríklad USB \cite{usbSpec} a PCIe \cite{pcieSpec}. Vysokorýchlostným zberniciam sa v práci nebudeme venovať, nakoľko si na fyzickej vrstve vyžadujú dedikovaný hardvér a vrámci FPGA obvodov sa zvyknú implementovať iba vyššie vrstvy daných protokolov.
+\begin{figure}
+    \centerline{\includegraphics[width=1\textwidth]{images/clockDemo.pdf}}
+    \caption[Príklad synchrónneho prenosu dát]{Príklad synchrónneho prenosu dát. V príklade na obrázku sú jednotlivé bity čítané pri nábehovej hrane hodinového signálu. Zvislé čiary znázorňujú momenty, v ktorých sa dáta čítajú.}
+    \label{obr:clockDemo}
+\end{figure}
+
+Iný spôsob ako preniesť hodinový signál je zakódovať hodinový signál vrámci dátového. Prijímajúce zariadenie dokáže následne z prijatého signálu správne dekódovať synchronizované dáta. Tento spôsob synchrónneho prenosu dát sa využíva najmä pri vysokorýchlostných (angl. high-speed) sériových zberniciach \cite{serdes}, tzv. SerDes (Serializer-Deserializer), ako sú napríklad USB \cite{usbSpec} a PCIe \cite{pcieSpec}. Vysokorýchlostným zberniciam sa v práci nebudeme venovať, nakoľko si na fyzickej vrstve vyžadujú dedikovaný hardvér a~vrámci FPGA obvodov sa zvyknú implementovať iba vyššie vrstvy daných protokolov.
 
 Protikladom synchrónnych zberníc sú asynchrónne zbernice. Rozdiel spočíva v tom, že hodinový signál je implicitný a je daný parametrom protokolu, zvyčajne nazývaný symbolová rýchlosť (angl. baud rate). Symbolová rýchlosť určuje počet prenesených symbolov (napr. bitov) za sekundu. Príkladom takejto zbernice je UART \cite{uartBus}.
 
 Z pohľadu MITM útoku nie je podstatné rozlišovať medzi asynchrónnymi zbernicami a synchrónnymi so zabudovaným hodinovým signálom. Ich spoločným znakom je, že nemáme explicitný hodinový signál, ktorý by riadil komunikáciu. To umožňuje v niektorých prípadoch odchytiť celý odvysielaný rámec, spracovať ho a následne odvysielať. V prípade synchrónnej zbernice s explicitným hodinovým signálom môže byť pozastavenie nemožné. Protokol danej zbernice určuje, ktorá strana má generovať riadiaci hodinový signál. V prípade, že hodinový signál generuje druhá strana, falošné dáta musíme vysielať synchrónne s týmto signálom. Tento problém úzko súvisí s tzv. master-slave architektúrou, ktorú popíšeme v ďalšej ćasti
 
-\subsection{Architektúra master-slave}
+\subsection{Architektúra master-slave} \label{sek:masterSlave}
 Veľká časť protokolov hardvérových zberníc je postavená na asymetrickej master-slave architektúre. V master-slave architektúre protokol definuje (zvyčajne jedno) tzv. master zariadenie, ktoré riadi komunikáciu na zbernici. Príkladom riadenia komunikácie môže byť riadenie prístupu ku zbernici, vysielanie hodinového signálu v prípade synchrónnej zbernice a pod. Spôsob riadenia sa môže líšiť v závislosti od protokolu. Ostatné zariadenia, nazývané slave, sa musia riadeniu prispôsobiť. Okrem iného, to zvyčajne znamená, že môžu vysielať dáta len v časových intervaloch vyhradených master stranou. Príkladom master-slave zberníc sú SPI \cite{spiBus}, I\textsuperscript{2}C \cite{i2cSpec} a USB \cite{usbSpec}. Niektoré zbernice, napr. I\textsuperscript{2}C \cite{i2cSpec}, podporujú aj tzv. multi-master architektúru, ktorá umožňuje mať viacero master zariadení pripojených ku zbernici súčasne. Takýmto scenárom sa v práci nebudeme venovať, nakoľko ich využitie je pomerne zriedkavé.
 
 Pre MITM útok prináša master-slave architektúra značné komplikácie. Najmä na master strane (rozhranie, na ktorom MITM zariadenie simuluje skutočné slave zariadenie) predstavuje principiálny problém fakt, že falošné dáta, ktoré chceme poslať musíme odvysielať vo vyhradených časových intervaloch určených mastrom. Toto obmedzenie je problematické v prípade ak falošné dáta závisia od dát vyslaných druhou stranou, ktoré sme ešte neprijali. V kapitole \ref{kap:implementacia} uvedieme čiastočné riešenie na tento problém. Asymetrickosť master-slave architektúry však znamená, že už na úrovni MITM logiky je potrebné poznať, ktorá strana je master a ktorá slave, čo principiálne znemožňuje úplne abstrahovať od tejto vlastnosti.
@@ -27,16 +33,22 @@ Na základe smeru komunikácie rozlišujeme medzi simplex, half-duplex a full-du
 
 Ďalej rozlišujeme medzi sériovými a paralelnými zbernicami. Sériové sa vyznačujú tým, že jednotlivé symboly sú prenášané sériovo, pričom niektoré zbernice, napr. PCIe \cite{pcieSpec}, podporujú sériový prenos viacerých rámcov súčasne po paralelných linkách. Paralelné zbernice naopak prenášajú samotný rámec paralelne po viacerých linkách.
 
-Posledné dve kategórie, ktoré uvedieme sú point-to-point zbernice a multi-drop zbernice. Point-to-point zbernice sú určené pre zapojenie práve dvoch zariadení a sú následne dedikované pre prenos dát medzi týmito dvoma zariadeniami. Príkladmi point-to-point zberníc sú UART \cite{uartBus} a PCIe \cite{pcieSpec}. Multi-drop zbernice naopak podporujú zapojenie viacej ako dvoch zariadení súčasne. Následne je potom potrebné vrámci komunikácie jednoznačne určiť zariadenie, pre ktoré sú vysielané dáta určené. Najčastejším spôsobom je adresácia, napr. I\textsuperscript{2}C \cite{i2cSpec} a USB \cite{usbSpec}. Iný spôsob môže byť tzv. slave-select, označovaný aj chip-select, ktorý sa používa napríklad pri zbernici SPI \cite{spiBus}.
+Posledné dve kategórie, ktoré uvedieme sú point-to-point zbernice a multi-drop zbernice. Point-to-point zbernice sú určené pre zapojenie práve dvoch zariadení a sú následne dedikované pre prenos dát medzi týmito dvoma zariadeniami. Príkladmi point-to-point zberníc sú UART \cite{uartBus} a PCIe \cite{pcieSpec}. Multi-drop zbernice naopak podporujú zapojenie viacej ako dvoch zariadení súčasne. Následne je potom potrebné vrámci komunikácie jednoznačne určiť zariadenie, pre ktoré sú vysielané dáta určené. Najčastejším spôsobom je adresácia, napr. I\textsuperscript{2}C \cite{i2cSpec} a USB \cite{usbSpec}. Iný spôsob môže byť tzv. slave-select, označovaný aj chip-select, ktorý sa používa napríklad pri zbernici SPI \cite{spiBus}. Vizuálne zhrnutie spomenutých druhov zberníc je na obrázku \ref{obr:busTree}.
+
+\begin{figure}
+    \centerline{\includegraphics[width=1\textwidth]{images/busTree.pdf}}
+    \caption[Vybrané typy zberníc]{Vybrané druhy zberníc.}
+    \label{obr:busTree}
+\end{figure}
 
 \section{UART zbernica}
 UART (Universal Asynchronous Receiver Transmitter) je defakto-štandard, ktorý okrem hardvérového rozhrania definuje aj komunikačný protokol a niektoré jeho parametre. Z hľadiska kategorizácie ide o sériovú full-duplex asynchrónnu point-to-point linku. Keďže ide o point-to-point linku, riadenie prístupu nie je potrebné.
 
 \subsection{Hardvér UART zbernice}
-UART zbernica pozostáva z dvoch hlavných liniek: RX (Receive) pre prijímanie dát a TX (Transmit) pre vysielanie dát. Okrem týchto dátových existujú aj niektoré ďalšie riadiace linky, ktoré sú súčasťou RS-232 štandardu \cite{rs232Spec} (ktorý využíva UART protokol), tie sa však dnes zriedka využívajú, preto ich zanedbáme. Schéma zapojenia UART zbernice medzi dvoma zariadeniami je na obrázku \ref{obr:uartWiring}.
+UART zbernica pozostáva z dvoch hlavných liniek: RX (Receive) pre prijímanie dát a~TX (Transmit) pre vysielanie dát. Okrem týchto dátových existujú aj niektoré ďalšie riadiace linky, ktoré sú súčasťou RS-232 štandardu \cite{rs232Spec} (ktorý využíva UART protokol), tie sa však dnes zriedka využívajú, preto ich zanedbáme. Schéma zapojenia UART zbernice medzi dvoma zariadeniami je na obrázku \ref{obr:uartWiring}.
 
 \begin{figure}
-    \centerline{\includegraphics[width=0.9\textwidth]{images/uartWiring.png}}
+    \centerline{\includegraphics[width=0.9\textwidth]{images/uartWiring.pdf}}
     \caption[Zapojenie zbernice UART]{Zapojenie zbernice UART. Linky RX a TX sú zapojené do kríža.}
     \label{obr:uartWiring}
 \end{figure}
@@ -60,9 +72,17 @@ Komunikácia na SPI zbernici je riadená master-slave architektúrou. Prístup k
 SPI zbernica pozostáva z troch hlavných liniek: MISO (Master In Slave Out), ktorá zabezpečuje prenos dát smerom od slave zariadení k master zariadeniu, MOSI (Master Out Slave In) pre prenos dát opačným smerom a SCLK (Serial Clock) pre prenos hodinového signálu (generovaný master zariadením) \cite{spiBus}. Schéma zapojenia pomocou SPI zbernice je na obrázku \ref{obr:spiWiring}. Dáta po vodičoch MISO a MOSI môžu tiecť súčasne čo umožňuje full-duplex komunikáciu.
 
 \begin{figure}
-    \centerline{\includegraphics[width=0.9\textwidth]{images/spiWiring.png}}
+    \centerline{\includegraphics[width=1\textwidth]{images/spiWiring.pdf}}
     \caption[Zapojenie zbernice SPI]{Zapojenie zbernice SPI.}
     \label{obr:spiWiring}
+\end{figure}
+
+Existujú štyri spôsoby, tzv. módy, ktorými hodinový signál riadi prenos dát na zbernici a líšia sa kombináciou dvoch parametrov. Prvým parametrom je polarita hodín (CPOL), ktorý určuje, či je v pasívnom stave úroveň napätia hodinového signálu na úrovni logickej 0 alebo 1. Druhý parameter, fáza hodín (CPHA), ktorý rozhoduje, na ktorej hrane sa dáta čítajú. Vizualizácia všetkých štyroch režimov je na obrázku \ref{obr:spiModes}. Výber módu závisí od implementácie SPI na jednotlivých zariadeniach, drvivá väčšina zariadení podporuje iba mód 0 -- polarita v pasívnom stave 0 a čítanie na nábehovej hrane, preto sa v práci budeme zaoberať iba touto konfiguráciou.
+
+\begin{figure}
+    \centerline{\includegraphics[width=0.9\textwidth]{images/spiSignals.pdf}}
+    \caption[Režimy hodín zbernice SPI]{Režimy hodín zbernice SPI. Zvislé čiary znázorňujú hrany hodinového signálu, pri ktorých sa čítajú dáta na linkách MISO a MOSI.}
+    \label{obr:spiModes}
 \end{figure}
 
 \section{I\textsuperscript{2}C zbernica}
@@ -72,8 +92,8 @@ I\textsuperscript{2}C (Inter-Integrated Circuits) je štandardizovaná zbernica,
 Zbernica pozostáva z dvoch vodičov: SDA (Serial Data Line), ktorý zabezpečuje sériový prenos dát (bitov) a SCL (Serial Clock Line) pre prenos synchronizačného hodinového signálu \cite{i2cSpec}. Vodiče sú na komunikujúcich zariadeniach pripojené v tzv. open-drain režime a (každé zvlášť) sú cez zdvíhací odpor (pull-up rezistor) pripojené k napätiu 5\,V resp. 3.3\,V v závislosti od konfigurácie. Na obrázku \ref{obr:i2cWiring} je znázornené zapojenie zariadení pomocou zbernice I\textsuperscript{2}C.
 
 \begin{figure}
-    \centerline{\includegraphics[width=0.9\textwidth]{images/i2cWiring.png}}
-    \caption[Zapojenie zbernice I\textsuperscript{2}C]{Zapojenie zbernice I\textsuperscript{2}C. Open-drain logika interného zapojenia vodičov v zariadeniach je znázornená pomocou \uv{spínačov}. V skutočnosti je realizovaná pomocou tranzistorov.}
+    \centerline{\includegraphics[width=0.9\textwidth]{images/i2cWiring.pdf}}
+    \caption[Zapojenie zbernice I\textsuperscript{2}C]{Zapojenie zbernice I\textsuperscript{2}C. Open-drain logika interného zapojenia vodičov v~zariadeniach je znázornená pomocou \uv{spínačov}. V skutočnosti je realizovaná pomocou tranzistorov.}
     \label{obr:i2cWiring}
 \end{figure}
 
@@ -85,7 +105,7 @@ Komunikácia na I\textsuperscript{2}C zbernici je riadená architektúrou master
 Zariadenie, s ktorým chce master komunikovať je určené adresáciou. Každé slave zariadenie má pridelenú 7-bitovú (resp. 10-bitovú v novšej verzii štandardu) adresu, ktorá je zvyčajne pevne nastavená výrobcom hardvéru \cite{i2cSpec}. Z dôvodu predchádzania kolízií v adresách, zvyknú výrobcovia prideliť zariadeniu viacero adries, z ktorých je možne nakonfigurovať práve jednu, väčšinou hardvérovým spínačom.
 
 \subsection{Protokol a štruktúra rámcov}
-I\textsuperscript{2}C štandard striktne definuje spôsob komunikácie na zbernici. Samotná komunikácia vyzerá nasledovne: Master zariadenie nastaví úroveň napätia na SDA linke na hodnotu logickej 0, čím pošle tzv. START bit, ktorý signalizuje začiatok komunikácie. Nasleduje 7-bitová (resp. 10-bitová) adresa zariadenia, s ktorým chce master komunikovať a jeden tzv. R/W bit, ktorý označuje, či ide o operáciu čítania alebo zápisu. (Z pohľadu master zariadenia logická 1 predstavuje čítanie, 0 predstavuje zápis.) S nasledujúcim hodinovým impulzom musí adresované slave zariadenie komunikáciu potvrdiť (pošle tzv. ACK bit) tým, že úroveň napätia na SDA linke nastaví na hodnotu logickej 0. Potom nasledujú samotné dáta, ktoré posiela master (resp. slave v prípade, že ide o operáciu čítania). Dáta su členené na 8-bitové sekvencie, ktoré sú zakaždým potvrdzované druhou stranou rovnakým spôsobom. Za posledným potvrdením dát pošle master tvz. STOP bit, čím signalizuje ukončenie komunikácie. Štruktúra rámca je znázornená na obrázku \ref{obr:i2cFrame}.
+I\textsuperscript{2}C štandard striktne definuje spôsob komunikácie na zbernici. Samotná komunikácia vyzerá nasledovne: Master zariadenie nastaví úroveň napätia na SDA linke na hodnotu logickej 0, čím pošle tzv. START bit, ktorý signalizuje začiatok komunikácie. Nasleduje 7-bitová (resp. 10-bitová) adresa zariadenia, s ktorým chce master komunikovať a~jeden tzv. R/W bit, ktorý označuje, či ide o operáciu čítania alebo zápisu. (Z pohľadu master zariadenia logická 1 predstavuje čítanie, 0 predstavuje zápis.) S nasledujúcim hodinovým impulzom musí adresované slave zariadenie komunikáciu potvrdiť (pošle tzv. ACK bit) tým, že úroveň napätia na SDA linke nastaví na hodnotu logickej 0. Potom nasledujú samotné dáta, ktoré posiela master (resp. slave v prípade, že ide o~operáciu čítania). Dáta su členené na 8-bitové sekvencie, ktoré sú zakaždým potvrdzované druhou stranou rovnakým spôsobom. Za posledným potvrdením dát pošle master tvz. STOP bit, čím signalizuje ukončenie komunikácie. Štruktúra rámca je znázornená na obrázku \ref{obr:i2cFrame}.
 
 \begin{figure}
     \centerline{\includegraphics[width=1\textwidth]{images/i2cFrame.png}}
