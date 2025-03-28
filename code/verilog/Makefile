@@ -19,13 +19,16 @@ default: sim bin
 
 
 include icestick.mk
+include ice40hx8k.mk
 include test.mk
 
 
 # Build all binaries
 bin: \
 		$(BIN_DIR)/icestick-spi.bin \
-		$(BIN_DIR)/icestick-uart.bin;
+		$(BIN_DIR)/icestick-uart.bin \
+		$(BIN_DIR)/ice40hx8k-spi.bin \
+		$(BIN_DIR)/ice40hx8k-uart.bin;
 
 
 # Run all simulations

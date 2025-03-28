@@ -4,13 +4,13 @@
 
 // system clock parameters
 // set these according to the icepll tool to get the desired frequency
-`define SYS_FREQ 48	// system frequency in MHz
+`define SYS_FREQ 72	// system frequency in MHz (suppoted range 16 -- 275)
 
 // io parameters
-`define DEBOUNCE_DURATION_US 50_000	// duration (in microseconds) of stable button input signal to detect change
+`define DEBOUNCE_LEN_US 50_000	// duration (in microseconds) of stable button input signal to detect change
 
 // MITM parameters
-`define MODE_WIDTH 4	// number of MITM modes
+`define NUM_MITM_MODES 4	// maximum supported number is 4
 
 // general bus parameters
 `define NUM_DATA_BITS 8	// number of data bits per frame

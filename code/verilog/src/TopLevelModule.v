@@ -19,7 +19,7 @@ module TopLevelModule (
 	input wire mode_select_btn,
 	
 	// user outputs
-	output wire [MODE_WIDTH-1:0] mode_leds,
+	output wire [NUM_MITM_MODES-1:0] mode_leds,
 	output wire comm_active_led,
 	
 	// bus lines
@@ -54,8 +54,8 @@ module TopLevelModule (
 	`endif
 	
 	// general parameters
-	localparam DEBOUNCE_DURATION_US = `DEBOUNCE_DURATION_US;
-	localparam MODE_WIDTH = `MODE_WIDTH;
+	localparam DEBOUNCE_LEN_US = `DEBOUNCE_LEN_US;
+	localparam NUM_MITM_MODES = `NUM_MITM_MODES;
 	localparam NUM_DATA_BITS =`NUM_DATA_BITS;
 	
 	// bus specific parameters
@@ -85,7 +85,7 @@ module TopLevelModule (
 	`endif
 	
 	// I/O connection to MITM logic
-	wire [MODE_WIDTH-1:0] mode_select;
+	wire [NUM_MITM_MODES-1:0] mode_select;
 	
 	// MITM logic connection to Bus interface
 	
@@ -126,7 +126,6 @@ module TopLevelModule (
 	`ifdef BENCH
 		assign sys_clk = ref_clk;
 	`else
-		// PLL (48 MHz)
 		// specific module to iCE40 FPGAs
 		SB_PLL40_CORE #(
 			.FEEDBACK_PATH("SIMPLE"),		// don't use fine delay adjustment
@@ -146,11 +145,11 @@ module TopLevelModule (
 	
 	// User I/O handler module
 	IoHandler #(
-		.MODE_WIDTH(MODE_WIDTH),
+		.NUM_MITM_MODES(NUM_MITM_MODES),
 		.BUTTONS_ACTIVE_LOW(1),	// buttons are active high
 		.DEBOUNCED_RST_ACTIVE_LOW(0),	// reset signal for internal logic is active high
 		.SYS_FREQ_HZ(SYS_FREQ_HZ),
-		.DEBOUNCE_DURATION_US(DEBOUNCE_DURATION_US)
+		.DEBOUNCE_LEN_US(DEBOUNCE_LEN_US)
 	) ioHandler (
 		.sys_clk(sys_clk),
 		.rst_btn(rst_btn),
@@ -233,7 +232,8 @@ module TopLevelModule (
 	
 	// MITM logic module
 	MitmLogic #(
-		.NUM_DATA_BITS(NUM_DATA_BITS)
+		.NUM_DATA_BITS(NUM_DATA_BITS),
+		.NUM_MITM_MODES(NUM_MITM_MODES)
 	) mitmLogic (
 		.sys_clk(sys_clk),
 		.rst(rst),

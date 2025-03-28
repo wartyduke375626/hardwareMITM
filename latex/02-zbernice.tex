@@ -1,16 +1,16 @@
 \chapter{Vybrané zbernicové protokoly}
 \label{kap:zbernice}
 
-V tejto kapitole stručne spomenieme vybrané zbernicové protokoly a zhrnieme ich kľúčové vlastnosti, ktoré budú relevantné v ďalších častiach práce. Vo všeobecnosti existuje mnoho rôznych zbernicových protokolov. Tie môžu využívať rôzne techniky, ktoré umožňujú zabezpečiť komunikáciu a jej riadenie. Mnoho týchto protokolov má však veľa spoločných znakov. Aj preto sa v práci budeme venovať iba niektorým vybraným. V tejto kapitole najskôr uvedieme niektoré základné vlastnosti zberníc. Následne predstavíme 3 príklady zberníc (UART, SPI, I\textsuperscript{2}C), ktorých podporu implementujeme na FPGA MITM obvode popísanom v kapitole \ref{kap:implementacia}.
+V tejto kapitole stručne spomenieme vybrané zbernicové protokoly a zhrnieme ich kľúčové vlastnosti, ktoré budú relevantné v ďalších častiach práce. Vo všeobecnosti existuje mnoho rôznych zbernicových protokolov. Tie môžu využívať rôzne techniky, ktoré umožňujú zabezpečiť komunikáciu a jej riadenie. Mnoho týchto protokolov má však veľa spoločných znakov. Aj preto sa v práci budeme venovať iba niektorým vybraným. V tejto kapitole najskôr uvedieme niektoré základné vlastnosti zberníc. Následne predstavíme 3 príklady zberníc (UART, SPI, I\textsuperscript{2}C). Podporu pre UART a SPI zároveň implementujeme na FPGA MITM obvode popísanom v kapitole \ref{kap:implementacia}.
 
 \section{Vlastnosti hardvérových zberníc}
 V tejto časti spomenieme vybrané vlastnosti hardvérových zberníc a základnú kategorizáciu na základe týchto vlastností. Vlastnosti, ktoré opíšeme sú relevantné pre spôsob implementácie hardvérového MITM útoku na danej zbernici. Vlastnosti, ktoré nie sú relevantné, nebudeme popisovať.
 
-\subsection{Synchrónne a asynchrónne zbernice}
+\subsection{Synchrónne a asynchrónne zbernice} \label{sek:syncAsync}
 Pre účel MITM útoku je veľmi dôležité rozlišovať medzi tzv. synchrónnymi a asynchrónnymi zbernicami. Synchrónne zbernice sa vyznačujú tým, že dátový signál je doplnený o~synchronyzačný hodinový signál, ktorý riadi prenos dát na zbernici a umožňuje správne prečítať a dekódovať prenášané dáta. Takýto signál môže byť explicitne vysielaný na samostatnej linke, napr. zbernice SPI \cite{spiBus} a I\textsuperscript{2}C \cite{i2cSpec}. Tento spôsob synchronizácie je znázornený na obrázku \ref{obr:clockDemo}.
 
 \begin{figure}
-    \centerline{\includegraphics[width=1\textwidth]{images/clockDemo.pdf}}
+    \centerline{\includegraphics[width=1\textwidth]{images/signals/clockDemo.pdf}}
     \caption[Príklad synchrónneho prenosu dát]{Príklad synchrónneho prenosu dát. V príklade na obrázku sú jednotlivé bity čítané pri nábehovej hrane hodinového signálu. Zvislé čiary znázorňujú momenty, v ktorých sa dáta čítajú.}
     \label{obr:clockDemo}
 \end{figure}
@@ -36,7 +36,7 @@ Na základe smeru komunikácie rozlišujeme medzi simplex, half-duplex a full-du
 Posledné dve kategórie, ktoré uvedieme sú point-to-point zbernice a multi-drop zbernice. Point-to-point zbernice sú určené pre zapojenie práve dvoch zariadení a sú následne dedikované pre prenos dát medzi týmito dvoma zariadeniami. Príkladmi point-to-point zberníc sú UART \cite{uartBus} a PCIe \cite{pcieSpec}. Multi-drop zbernice naopak podporujú zapojenie viacej ako dvoch zariadení súčasne. Následne je potom potrebné vrámci komunikácie jednoznačne určiť zariadenie, pre ktoré sú vysielané dáta určené. Najčastejším spôsobom je adresácia, napr. I\textsuperscript{2}C \cite{i2cSpec} a USB \cite{usbSpec}. Iný spôsob môže byť tzv. slave-select, označovaný aj chip-select, ktorý sa používa napríklad pri zbernici SPI \cite{spiBus}. Vizuálne zhrnutie spomenutých druhov zberníc je na obrázku \ref{obr:busTree}.
 
 \begin{figure}
-    \centerline{\includegraphics[width=1\textwidth]{images/busTree.pdf}}
+    \centerline{\includegraphics[width=1\textwidth]{images/misc/busTree.pdf}}
     \caption[Vybrané typy zberníc]{Vybrané druhy zberníc.}
     \label{obr:busTree}
 \end{figure}
@@ -48,19 +48,21 @@ UART (Universal Asynchronous Receiver Transmitter) je defakto-štandard, ktorý 
 UART zbernica pozostáva z dvoch hlavných liniek: RX (Receive) pre prijímanie dát a~TX (Transmit) pre vysielanie dát. Okrem týchto dátových existujú aj niektoré ďalšie riadiace linky, ktoré sú súčasťou RS-232 štandardu \cite{rs232Spec} (ktorý využíva UART protokol), tie sa však dnes zriedka využívajú, preto ich zanedbáme. Schéma zapojenia UART zbernice medzi dvoma zariadeniami je na obrázku \ref{obr:uartWiring}.
 
 \begin{figure}
-    \centerline{\includegraphics[width=0.9\textwidth]{images/uartWiring.pdf}}
+    \centerline{\includegraphics[width=0.9\textwidth]{images/busses/uartWiring.pdf}}
     \caption[Zapojenie zbernice UART]{Zapojenie zbernice UART. Linky RX a TX sú zapojené do kríža.}
     \label{obr:uartWiring}
 \end{figure}
 
 \subsection{UART protokol a štruktúra rámcov}
-UART definuje aj komunikačný protokol pre posielanie dát. V pasívnom stave je napätie danej linky na úrovni logickej 1 (zvyčajne 3.3\,V alebo 5\,V). Vysielaný rámec vždy začína bitom s logickou hodnotou 0, tzv. START bit. Nasledujú samotné dáta, ktorých dĺžka sa môže líšiť v závislosti od nastavených parametrov, najčastejšie 8 bitov. Za dátovými bitmi môže nasledovať nepovinný paritný bit, ten sa však zriedka využíva. Rámec je vždy ukončený tzv. STOP bitom s logickou hodnotou 1. Za STOP bitom môže nasledovať ľubovoľná pauza, ktorá sa v literatúre označuje aj predĺžený STOP bit. Štruktúra UART rámca je znázornená na obrázku \ref{obr:uartFrame}.
+UART definuje aj komunikačný protokol pre posielanie dát. V pasívnom stave je napätie danej linky na úrovni logickej 1 (zvyčajne 3.3\,V alebo 5\,V). Vysielaný rámec vždy začína bitom s logickou hodnotou 0, tzv. START bit.  Nasledujú samotné dáta (počnúc najmenej významným bitom), pričom počet bitov sa môže líšiť v závislosti od nastavených parametrov, najčastejšie 8 bitov. Za dátovými bitmi môže nasledovať nepovinný paritný bit, ten sa však zriedka využíva. Rámec je vždy ukončený tzv. STOP bitom s logickou hodnotou 1. Za STOP bitom môže nasledovať ľubovoľná pauza, ktorá sa v literatúre označuje aj predĺžený STOP bit. Štruktúra UART rámca je znázornená na obrázku \ref{obr:uartFrame}.
 
 \begin{figure}
-    \centerline{\includegraphics[width=1\textwidth]{images/uartFrame.png}}
-    \caption[Štruktúra UART rámca]{Štruktúra UART rámca.}
+    \centerline{\includegraphics[width=1\textwidth]{images/busses/uartFrame.png}}
+    \caption[Štruktúra UART rámca]{Štruktúra UART rámca. Dáta sú posielané od najmenej významného bitu.}
     \label{obr:uartFrame}
 \end{figure}
+
+UART je asynchrónna zbernica, preto dĺžka trvania jedného bitu je určená implicitne, symbolovou rýchlosťou. Princíp sme spomenuli v časti \ref{sek:syncAsync}. Dve najčastejšie používané hodnoty symbolovej rýchlosti na zbernici UART sú 115\,200 a 9\,600 symbolov za sekundu.
 
 \section{SPI Zbernica}
 Zbernica SPI je defakto-štandard, ktorý definuje hardvérové rozhranie, pre zapojenie komunikujúcich strán. SPI je synchrónna sériová zbernica typu multi-drop s explicitným hodinovým signálom na dedikovanej linke. Keďže ide o defakto-štandard, zbernica SPI nedefinuje predpísanú štruktúru posielaných dát \cite{spiBus}.
@@ -72,7 +74,7 @@ Komunikácia na SPI zbernici je riadená master-slave architektúrou. Prístup k
 SPI zbernica pozostáva z troch hlavných liniek: MISO (Master In Slave Out), ktorá zabezpečuje prenos dát smerom od slave zariadení k master zariadeniu, MOSI (Master Out Slave In) pre prenos dát opačným smerom a SCLK (Serial Clock) pre prenos hodinového signálu (generovaný master zariadením) \cite{spiBus}. Schéma zapojenia pomocou SPI zbernice je na obrázku \ref{obr:spiWiring}. Dáta po vodičoch MISO a MOSI môžu tiecť súčasne čo umožňuje full-duplex komunikáciu.
 
 \begin{figure}
-    \centerline{\includegraphics[width=1\textwidth]{images/spiWiring.pdf}}
+    \centerline{\includegraphics[width=1\textwidth]{images/busses/spiWiring.pdf}}
     \caption[Zapojenie zbernice SPI]{Zapojenie zbernice SPI.}
     \label{obr:spiWiring}
 \end{figure}
@@ -80,7 +82,7 @@ SPI zbernica pozostáva z troch hlavných liniek: MISO (Master In Slave Out), kt
 Existujú štyri spôsoby, tzv. módy, ktorými hodinový signál riadi prenos dát na zbernici a líšia sa kombináciou dvoch parametrov. Prvým parametrom je polarita hodín (CPOL), ktorý určuje, či je v pasívnom stave úroveň napätia hodinového signálu na úrovni logickej 0 alebo 1. Druhý parameter, fáza hodín (CPHA), ktorý rozhoduje, na ktorej hrane sa dáta čítajú. Vizualizácia všetkých štyroch režimov je na obrázku \ref{obr:spiModes}. Výber módu závisí od implementácie SPI na jednotlivých zariadeniach, drvivá väčšina zariadení podporuje iba mód 0 -- polarita v pasívnom stave 0 a čítanie na nábehovej hrane, preto sa v práci budeme zaoberať iba touto konfiguráciou.
 
 \begin{figure}
-    \centerline{\includegraphics[width=0.9\textwidth]{images/spiSignals.pdf}}
+    \centerline{\includegraphics[width=0.9\textwidth]{images/busses/spiClocks.pdf}}
     \caption[Režimy hodín zbernice SPI]{Režimy hodín zbernice SPI. Zvislé čiary znázorňujú hrany hodinového signálu, pri ktorých sa čítajú dáta na linkách MISO a MOSI.}
     \label{obr:spiModes}
 \end{figure}
@@ -92,7 +94,7 @@ I\textsuperscript{2}C (Inter-Integrated Circuits) je štandardizovaná zbernica,
 Zbernica pozostáva z dvoch vodičov: SDA (Serial Data Line), ktorý zabezpečuje sériový prenos dát (bitov) a SCL (Serial Clock Line) pre prenos synchronizačného hodinového signálu \cite{i2cSpec}. Vodiče sú na komunikujúcich zariadeniach pripojené v tzv. open-drain režime a (každé zvlášť) sú cez zdvíhací odpor (pull-up rezistor) pripojené k napätiu 5\,V resp. 3.3\,V v závislosti od konfigurácie. Na obrázku \ref{obr:i2cWiring} je znázornené zapojenie zariadení pomocou zbernice I\textsuperscript{2}C.
 
 \begin{figure}
-    \centerline{\includegraphics[width=0.9\textwidth]{images/i2cWiring.pdf}}
+    \centerline{\includegraphics[width=0.9\textwidth]{images/busses/i2cWiring.pdf}}
     \caption[Zapojenie zbernice I\textsuperscript{2}C]{Zapojenie zbernice I\textsuperscript{2}C. Open-drain logika interného zapojenia vodičov v~zariadeniach je znázornená pomocou \uv{spínačov}. V skutočnosti je realizovaná pomocou tranzistorov.}
     \label{obr:i2cWiring}
 \end{figure}
@@ -105,12 +107,23 @@ Komunikácia na I\textsuperscript{2}C zbernici je riadená architektúrou master
 Zariadenie, s ktorým chce master komunikovať je určené adresáciou. Každé slave zariadenie má pridelenú 7-bitovú (resp. 10-bitovú v novšej verzii štandardu) adresu, ktorá je zvyčajne pevne nastavená výrobcom hardvéru \cite{i2cSpec}. Z dôvodu predchádzania kolízií v adresách, zvyknú výrobcovia prideliť zariadeniu viacero adries, z ktorých je možne nakonfigurovať práve jednu, väčšinou hardvérovým spínačom.
 
 \subsection{Protokol a štruktúra rámcov}
-I\textsuperscript{2}C štandard striktne definuje spôsob komunikácie na zbernici. Samotná komunikácia vyzerá nasledovne: Master zariadenie nastaví úroveň napätia na SDA linke na hodnotu logickej 0, čím pošle tzv. START bit, ktorý signalizuje začiatok komunikácie. Nasleduje 7-bitová (resp. 10-bitová) adresa zariadenia, s ktorým chce master komunikovať a~jeden tzv. R/W bit, ktorý označuje, či ide o operáciu čítania alebo zápisu. (Z pohľadu master zariadenia logická 1 predstavuje čítanie, 0 predstavuje zápis.) S nasledujúcim hodinovým impulzom musí adresované slave zariadenie komunikáciu potvrdiť (pošle tzv. ACK bit) tým, že úroveň napätia na SDA linke nastaví na hodnotu logickej 0. Potom nasledujú samotné dáta, ktoré posiela master (resp. slave v prípade, že ide o~operáciu čítania). Dáta su členené na 8-bitové sekvencie, ktoré sú zakaždým potvrdzované druhou stranou rovnakým spôsobom. Za posledným potvrdením dát pošle master tvz. STOP bit, čím signalizuje ukončenie komunikácie. Štruktúra rámca je znázornená na obrázku \ref{obr:i2cFrame}.
+I\textsuperscript{2}C štandard striktne definuje spôsob komunikácie na zbernici. Samotná komunikácia vyzerá nasledovne: Master zariadenie nastaví úroveň napätia na SDA linke na hodnotu logickej 0, čím pošle tzv. START bit, ktorý signalizuje začiatok komunikácie. Nasleduje 7-bitová (resp. 10-bitová) adresa zariadenia, s ktorým chce master komunikovať, počnúc najvýznamnejším bitom adresy. Za adresou nasleduje jeden tzv. R/W bit, ktorý označuje, či ide o operáciu čítania alebo zápisu. (Z pohľadu master zariadenia logická 1 predstavuje čítanie, 0 predstavuje zápis.) S nasledujúcim hodinovým impulzom musí adresované slave zariadenie komunikáciu potvrdiť (pošle tzv. ACK bit) tým, že úroveň napätia na SDA linke nastaví na hodnotu logickej 0. Potom nasledujú samotné dáta, ktoré posiela master (resp. slave v prípade, že ide o~operáciu čítania). Dáta sú členené na 8-bitové sekvencie, ktoré sú zakaždým potvrdzované druhou stranou rovnakým spôsobom a opäť sú posielané v poradí od najvýznamnejšieho bitu. Za posledným potvrdením dát pošle master tvz. STOP bit (napätie ponechá na úrovni logickej 1), čím signalizuje ukončenie komunikácie. Štruktúra rámca je znázornená na obrázku \ref{obr:i2cFrame}.
 
 \begin{figure}
-    \centerline{\includegraphics[width=1\textwidth]{images/i2cFrame.png}}
-    \caption[Štruktúra I\textsuperscript{2}C rámca]{Štruktúra I\textsuperscript{2}C rámca.}
+    \centerline{\includegraphics[width=1\textwidth]{images/busses/i2cFrame.png}}
+    \caption[Štruktúra I\textsuperscript{2}C rámca]{Štruktúra I\textsuperscript{2}C rámca. Adresa aj dáta sú posielané od najvýznamnejšieho bitu.}
     \label{obr:i2cFrame}
 \end{figure}
 
 V prípade, že počas komunikácie nastane chyba, prijímajúce zariadenie nepošle ACK bit. Teda napätie na SDA linke ostane na úrovni logickej 1 (tzv. NACK bit), čo je zároveň pasívny stav. V takomto prípade môže master reagovať dvoma spôsobmi. Buď pošle STOP bit, čo znamená okamžité ukončenie komunikácie, alebo môže zopakovať komunikáciu od začiatku, tým, že pošle START bit. Postupnosť NACK a STOP môže byť master zariadením zároveň využitá na signalizáciu ukončenia komunikácie v prípade operácie čítania \cite{i2cSpec}.
+
+\subsection{Mechanizmus naťahovania hodín}
+Naťahovanie hodín (angl. clock stretching) je mechanizmus I$^2$C protokolu, ktorý umožňuje slave zariadeniu dočasne spomaliť hodinové impulzy generované master zariadením \cite{i2cSpec}. To umožňuje slave zariadeniu spomaliť rýchlosť komunikácie, v prípade potreby väčšieho času pre spracovanie dát.
+
+Počas prebiehajúcej komunikácie master zariadenie monitoruje vysielaný hodinový signál na SCL linke. Pripomíname, že vodič SCL linky je pripojený cez zdvíhací odpor k zdroju napätia a komunikujúce zariadenia majú vodič pripojený v open-drain režime. Pokiaľ chce slave zariadenie spomaliť komunikáciu môže podržať SCL vodič pripojený na zem, čím dosiahne efekt, že napätie na vodiči ostane na úrovni logickej 0 aj v prípade, že master posiela logickú 1. Tento stav dokáže master detegovať a následne prispôsobiť rýchlosť komunikácie -- dáta sa čítajú na nábehovej hrane hodín, preto bude vysielanie aktuálneho bitu predĺžené. Mechanizmus naťahovania hodín je znázornený na obrázku~\ref{obr:i2cStretch}.
+
+\begin{figure}
+    \centerline{\includegraphics[width=0.9\textwidth]{images/busses/i2cStretch.pdf}}
+    \caption[Mechanizmus naťahovania hodín]{Mechanizmus naťahovania hodín. Zvislé čiary znázorňujú skutočné nábehové hrany na SCL vodiči, pri ktorých sa čítajú jednotlivé bity na SDA vodiči.}
+    \label{obr:i2cStretch}
+\end{figure}

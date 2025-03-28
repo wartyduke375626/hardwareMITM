@@ -7,7 +7,8 @@
 module MitmLogic #(
 
 	// parameters
-	parameter NUM_DATA_BITS = 8
+	parameter NUM_DATA_BITS = 8,
+	parameter NUM_MITM_MODES = 4
 ) (
 
 	// system inputs
@@ -15,7 +16,7 @@ module MitmLogic #(
 	input wire rst,
 	
 	// i/o inputs
-	input wire [NUM_MODES-1:0] mode_select,
+	input wire [NUM_MITM_MODES-1:0] mode_select,
 	
 	// bus control outputs
 	output reg fake_if0_select = 1'b0,
@@ -41,13 +42,12 @@ module MitmLogic #(
 );
 
 	// mode definitions
-	localparam NUM_MODES = 4;
 	localparam MODE_FORWARD = 4'b0001;
 	localparam MODE_SUB0_BLOCK1 = 4'b0010;
 	localparam MODE_SUB1_BLOCK0 = 4'b0100;
 	localparam MODE_ROT_13 = 4'b1000;
 
-	reg [NUM_MODES-1:0] mode = MODE_FORWARD;
+	reg [NUM_MITM_MODES-1:0] mode = MODE_FORWARD;
 	
 	// states
 	localparam STATE_READ = 0;

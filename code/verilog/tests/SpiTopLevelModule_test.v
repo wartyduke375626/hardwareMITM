@@ -7,8 +7,8 @@
 
 // general configuration
 `define TEST_FREQ_HZ 12_000_000
-`define DEBOUNCE_DURATION_US 1
-`define MODE_WIDTH 4
+`define DEBOUNCE_LEN_US 1
+`define NUM_MITM_MODES 4
 `define NUM_DATA_BITS 8
 
 // bus specific configuration
@@ -25,15 +25,15 @@ module SpiTopLevelModule_test();
 	localparam CLK_PERIOD_NS = 1_000_000_000 / `TEST_FREQ_HZ;
 	localparam SIM_DURATION = 2_000_000;	// 2000 us
 	
-	localparam DEBOUNCE_DURATION_US = `DEBOUNCE_DURATION_US;
-	localparam MODE_WIDTH = `MODE_WIDTH;
+	localparam DEBOUNCE_LEN_US = `DEBOUNCE_LEN_US;
+	localparam NUM_MITM_MODES = `NUM_MITM_MODES;
 	
 	localparam NUM_DATA_BITS = `NUM_DATA_BITS;
 	localparam SPI_CLK_PERIOD_NS = 1_000_000_000 / `SPI_FREQ_HZ;
 	localparam SS_ACTIVE_LOW = `SPI_SS_ACTIVE_LOW;
 	
 	// internal signals
-	wire [MODE_WIDTH-1:0] mode_leds;
+	wire [NUM_MITM_MODES-1:0] mode_leds;
 	wire comm_active_led;
 	
 	wire if1_ss_out;
@@ -113,7 +113,7 @@ module SpiTopLevelModule_test();
 		// actual button pressed
 		if (btn == "RST") begin rst_btn = 1'b0; end
 		if (btn == "MODE") begin mode_select_btn = 1'b0; end
-		#(1_000 * DEBOUNCE_DURATION_US + 3 * CLK_PERIOD_NS + $urandom % 200);
+		#(1_000 * DEBOUNCE_LEN_US + 3 * CLK_PERIOD_NS + $urandom % 200);
 		
 		// noisy button press
 		n = $urandom % 50;
@@ -161,7 +161,7 @@ module SpiTopLevelModule_test();
 	initial
 	begin
 		// wait some time for initial reset and initialization
-		#(1_000 * DEBOUNCE_DURATION_US + 10 * CLK_PERIOD_NS);
+		#(1_000 * DEBOUNCE_LEN_US + 10 * CLK_PERIOD_NS);
 		
 		// session 0 -- send data and receive dummy byte, then send dummy byte and receive data
 		
@@ -188,7 +188,7 @@ module SpiTopLevelModule_test();
 		comm_session++;
 		
 		// wait before next session
-		#(1_000 * DEBOUNCE_DURATION_US);
+		#(1_000 * DEBOUNCE_LEN_US);
 		
 		// session 1 -- send data and receive dummy byte, then send and receive data simmultaniously
 		
@@ -210,7 +210,7 @@ module SpiTopLevelModule_test();
 		comm_session++;
 		
 		// wait before next session
-		#(1_000 * DEBOUNCE_DURATION_US);
+		#(1_000 * DEBOUNCE_LEN_US);
 		
 		// session 2 -- send 2 data frames, then send dummy byte to receive data
 		
@@ -236,7 +236,7 @@ module SpiTopLevelModule_test();
 		comm_session++;
 		
 		// wait before next session
-		#(1_000 * DEBOUNCE_DURATION_US);
+		#(1_000 * DEBOUNCE_LEN_US);
 		
 		// session 3 -- send and receive 3 data frames simultaniously
 		

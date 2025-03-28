@@ -13,7 +13,7 @@ module MitmLogic #(
 	parameter CHUNK_SIZE_WIDTH = $clog2(BUF_SIZE+1),	// storing A requires exactly ceil(lg(A+1)) bits
 	
 	// MITM modes
-	parameter MODE_WIDTH = 3,
+	parameter NUM_MITM_MODES = 3,
 	parameter MITM_MODE_FORWARD = 0,
 	parameter MITM_MODE_SUB_ALL = 0,
 	parameter MITM_MODE_SUB_HALF = 0
@@ -22,7 +22,7 @@ module MitmLogic #(
 	// system inputs
 	input wire sys_clk,
 	input wire rst,
-	input wire [MODE_WIDTH-1:0] mode_select,
+	input wire [NUM_MITM_MODES-1:0] mode_select,
 	
 	// bus control inputs
 	input wire comm_active,

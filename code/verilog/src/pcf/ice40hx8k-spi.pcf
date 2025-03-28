@@ -1,0 +1,15 @@
+#
+# - SPI constraints for iCE40-HX8K breakout board FPGA
+#
+
+# interface 0
+set_io      if0_ss_in       K14
+set_io      if0_sclk_in     K15
+set_io      if0_miso_out    M16
+set_io      if0_mosi_in     N16
+
+# interface 1
+set_io      if1_ss_out      J14
+set_io      if1_sclk_out    K16
+set_io      if1_miso_in     L16
+set_io      if1_mosi_out    M15

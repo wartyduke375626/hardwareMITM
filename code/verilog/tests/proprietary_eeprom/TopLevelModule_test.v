@@ -15,10 +15,10 @@ module TopLevelModule_test();
 	localparam DEBOUNCE_COUNT = 16;
 	
 	localparam DATA_FRAME_SIZE = 20;
-	localparam MODE_WIDTH = 3;
+	localparam NUM_MITM_MODES = 3;
 	
 	// internal signals
-	wire [MODE_WIDTH-1:0] mode_leds;
+	wire [NUM_MITM_MODES-1:0] mode_leds;
 	wire comm_active_led;
 	
 	wire miso_out;

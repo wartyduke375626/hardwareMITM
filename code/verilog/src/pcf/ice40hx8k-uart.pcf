@@ -1,0 +1,11 @@
+#
+# - UART constraints for iCE40-HX8K breakout board FPGA
+#
+
+# interface 0
+set_io      if0_rx_in       K15
+set_io      if0_tx_out      M16
+
+# interface 1
+set_io      if1_rx_in       L16
+set_io      if1_tx_out      K16

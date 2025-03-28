@@ -25,7 +25,7 @@ module TopLevelModule #(
 	input wire ss_in,
 	
 	// user outputs
-	output wire [MODE_WIDTH-1:0] mode_leds,
+	output wire [NUM_MITM_MODES-1:0] mode_leds,
 	output wire comm_active_led,
 	output wire [0:0] unused_leds,
 	
@@ -42,7 +42,7 @@ module TopLevelModule #(
 	localparam CHUNK_SIZE_WIDTH = $clog2(BUF_SIZE+1);	// storing A requires exactly ceil(lg(A+1)) bits
 	
 	// MITM modes
-	localparam MODE_WIDTH = 3;
+	localparam NUM_MITM_MODES = 3;
 	localparam MITM_MODE_FORWARD = 3'b001;
 	localparam MITM_MODE_SUB_ALL = 3'b010;
 	localparam MITM_MODE_SUB_HALF = 3'b100;
@@ -60,7 +60,7 @@ module TopLevelModule #(
 	wire sync_ss_in;
 	
 	// I/O connection to MITM logic
-	wire [MODE_WIDTH-1:0] mode_select;
+	wire [NUM_MITM_MODES-1:0] mode_select;
 	
 	// MITM logic connection to Bus control
 	wire cmd_next_chunk;
@@ -119,7 +119,7 @@ module TopLevelModule #(
 	
 	// User I/O handler module
 	IoHandler #(
-		.MODE_WIDTH(MODE_WIDTH),
+		.NUM_MITM_MODES(NUM_MITM_MODES),
 		.BUTTON_ACTIVE_LOW(1),	// mode select button is active low
 		.DEBOUNCE_COUNT(DEBOUNCE_COUNT)
 	) ioHandler (
@@ -177,7 +177,7 @@ module TopLevelModule #(
 	
 	MitmLogic #(
 		.BUF_SIZE(BUF_SIZE),
-		.MODE_WIDTH(MODE_WIDTH),
+		.NUM_MITM_MODES(NUM_MITM_MODES),
 		
 		.MITM_MODE_FORWARD(MITM_MODE_FORWARD),
 		.MITM_MODE_SUB_ALL(MITM_MODE_SUB_ALL),

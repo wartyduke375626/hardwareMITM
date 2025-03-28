@@ -5,7 +5,7 @@ Pri spracovaní informácie pomocou informačných a komunikačných technológi
 
 Takúto zraniteľnosť možno potom zneužiť a realizovať tak úspešný útok na daný systém. My sa v práci budeme venovať konkrétnym druhom útokov, ktorých cieľom je narušiť prebiehajúcu komunikáciu medzi dvomi časťami systému a tým dosiahnuť zmenu správania systému, ktorá v konečnom dôsledku umožní útočníkovi napríklad obísť bezpečnostný mechanizmus.
 
-\section{Prehľad útokov na zariadenia} \label{kap1:sek:utoky}
+\section{Prehľad útokov na zariadenia}
 Väčšinu útokov na zariadenia možno rozdeliť do troch kategórií \cite{mitmPCIe}.
 
 \textbf{Útoky na softvérovej úrovni}, tiež SLA (Software Level Attacks), zneužívajú zraniteľnosti na úrovni operačného systému alebo aplikácie za účelom eskalácie privilégií. Hlavná výhoda týchto útokov je neobmedzená vzdialenosť útočníka a cieľového zariadenia \cite{mitmPCIe}. Nevýhodou pre útočníka je jednoduché nasadenie protiopatrení, ktoré možno vykonať aktualizáciou príslušného softvéru, ktorá zneužiteľnú zraniteľnosť opraví.
@@ -14,7 +14,7 @@ Väčšinu útokov na zariadenia možno rozdeliť do troch kategórií \cite{mit
 
 \textbf{Útoky na protokolovej úrovni}, PLA (Protocol Level Attacks), cielia na komunikáciou medzi entitami v systéme \cite{mitmPCIe}. Takéto útoky sa zameriavajú najmä na komunikáciu po sieti, často bezdrôtovej. Útoky tohto typu môžu byť vo všeobecnosti rôzne a náročnosť samotného útoku ako aj implementácia protiopatrenia závisí od zneužitej zraniteľnosti \cite{mitmPCIe}. V práci sa zameriame na konkrétny prípad hybridného útoku na protokolovej úrovni v kombinácií s útokom na hardvér a preskúmame možnosti jeho využitia.
 
-\section{Man-in-the-middle útoky} \label{kap1:sek:mitm}
+\section{Man-in-the-middle útoky}
 Man-in-the-middle (MITM) je spôsob útoku na komunikáciu prebiehajúcu po kanáli medzi dvoma entitami, pri ktorom útočník presmeruje komunikáciu z pôvodného kanálu na druhý kanál, ktorý je pod kontrolou útočníka. Takýto útok je často realizovaný transparentne z pohľadu účastníkov komunikácie  a vytvára tým zdanie, že účastníci sú spojený priamo. V skutočnosti však komunikácia prechádza cez tretiu entitu, ktorú má útočník pod kontrolou (napr. zariadenie, proces, systém). Tá je následne schopná, komunikáciu či už pasívne odpočúvať, alebo dokonca aktívne do komunikácie zasahovať. Schéma MITM útoku je znázornená na obrázku \ref{obr:mitm}.
 
 \begin{figure}
@@ -30,7 +30,7 @@ MITM útoky sú často uvažované v prostredí sieťovej komunikácie, kde má 
 
 Tento predpoklad je v poslednej dobe stále častejšie naplnený. Situácia, kedy má útočník fyzický prístup k zariadeniu je najčastejšie pri využití vnorených (angl. embedded) zariadení. Tie sa dnes čoraz častejšie využívajú na obsluhu rôznych systémov ako napríklad bezpečnostné kamery, inteligentné zámky, čipové karty a pod. Takýto typ MITM útoku sa v literatúre zvykne označovať ako hardvérový MITM útok.
 
-\section{Známe príklady útokov} \label{kap1:sek:priklady}
+\section{Známe príklady útokov}
 Hardvérový MITM útok je pomerne nový koncept, ktorý sa dostal do pozornosti v~posledných rokoch, existuje už však viacero prác, ktoré sa takýmito útokmi zaoberali \cite{mitmPCIe, mitmTouch, mitmCAN, mitmI2C, mitmSPI}.
 
 \subsection{Útok na odomknutie smarfónu}

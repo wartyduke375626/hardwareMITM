@@ -15,7 +15,7 @@ module MitmLogic_test();
 	localparam BUF_SIZE = 9;
 	localparam CHUNK_SIZE_WIDTH = $clog2(BUF_SIZE+1);
 	
-	localparam MODE_WIDTH = 2;
+	localparam NUM_MITM_MODES = 2;
 	localparam MITM_MODE_FORWARD = 2'b01;
 	localparam MITM_MODE_SUB_ALL = 2'b10;
 	
@@ -33,7 +33,7 @@ module MitmLogic_test();
 	// internal registers
 	reg sys_clk = 1'b0;
 	reg rst = 1'b0;
-	reg [MODE_WIDTH-1:0] mode_select = MITM_MODE_FORWARD;
+	reg [NUM_MITM_MODES-1:0] mode_select = MITM_MODE_FORWARD;
 
 	reg comm_active = 1'b0;
 	reg bus_ready = 1'b1;
@@ -45,7 +45,7 @@ module MitmLogic_test();
 	MitmLogic #( 
 		.BUF_SIZE(BUF_SIZE),
 		
-		.MODE_WIDTH(MODE_WIDTH),
+		.NUM_MITM_MODES(NUM_MITM_MODES),
 		.MITM_MODE_FORWARD(MITM_MODE_FORWARD),
 		.MITM_MODE_SUB_ALL(MITM_MODE_SUB_ALL)
 	) UUT (

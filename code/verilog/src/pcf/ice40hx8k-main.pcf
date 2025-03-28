@@ -1,0 +1,17 @@
+#
+# - main system and i/o constraints for iCE40-HX8K breakout board FPGA
+#
+
+# system inputs
+set_io                  ref_clk         J3
+
+# user inputs
+set_io  -pullup yes     rst_btn         C16
+set_io  -pullup yes     mode_select_btn D16
+
+# user outputs
+set_io                  mode_leds[0]    B5
+set_io                  mode_leds[1]    B4
+set_io                  mode_leds[2]    A2
+set_io                  mode_leds[3]    A1
+set_io                  comm_active_led C3

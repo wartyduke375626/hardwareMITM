@@ -12,15 +12,15 @@ module IoHandler_test();
 	localparam CLK_PERIOD_NS = 1_000_000_000 / SYS_CLK;
 	localparam SIM_DURATION = 70_000;	// 70 us
 	
-	localparam MODE_WIDTH = 4;
+	localparam NUM_MITM_MODES = 4;
 	localparam BUTTONS_ACTIVE_LOW = 1;
 	localparam DEBOUNCED_RST_ACTIVE_LOW = 0;
-	localparam DEBOUNCE_DURATION_US = 1;
+	localparam DEBOUNCE_LEN_US = 1;
 	
 	// test signals
 	wire debounced_rst;
-	wire [MODE_WIDTH-1:0] mode_select;
-	wire [MODE_WIDTH-1:0] mode_leds;
+	wire [NUM_MITM_MODES-1:0] mode_select;
+	wire [NUM_MITM_MODES-1:0] mode_leds;
 	wire comm_active_led;
 	
 	// test registers
@@ -53,7 +53,7 @@ module IoHandler_test();
 		// actual button pressed
 		if (btn == "RST") begin rst_btn = (BUTTONS_ACTIVE_LOW == 0) ? 1'b1 : 1'b0; end
 		if (btn == "MODE") begin mode_select_btn = (BUTTONS_ACTIVE_LOW == 0) ? 1'b1 : 1'b0; end
-		#(1_000 * DEBOUNCE_DURATION_US + 3 * CLK_PERIOD_NS + $urandom % 500);
+		#(1_000 * DEBOUNCE_LEN_US + 3 * CLK_PERIOD_NS + $urandom % 500);
 		
 		// noisy signal bounces
 		n = $urandom % 30;
@@ -67,16 +67,16 @@ module IoHandler_test();
 		// button released
 		if (btn == "RST") begin rst_btn = (BUTTONS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1; end
 		if (btn == "MODE") begin mode_select_btn = (BUTTONS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1; end
-		#(1_000 * DEBOUNCE_DURATION_US + 3 * CLK_PERIOD_NS + $urandom % 500 + 100);
+		#(1_000 * DEBOUNCE_LEN_US + 3 * CLK_PERIOD_NS + $urandom % 500 + 100);
 	endtask
 
 	// instantiate uut
 	IoHandler #( 
-		.MODE_WIDTH(MODE_WIDTH),
+		.NUM_MITM_MODES(NUM_MITM_MODES),
 		.BUTTONS_ACTIVE_LOW(BUTTONS_ACTIVE_LOW),
 		.DEBOUNCED_RST_ACTIVE_LOW(DEBOUNCED_RST_ACTIVE_LOW),
 		.SYS_FREQ_HZ(SYS_CLK),
-		.DEBOUNCE_DURATION_US(DEBOUNCE_DURATION_US)
+		.DEBOUNCE_LEN_US(DEBOUNCE_LEN_US)
 	) UUT (
 		.sys_clk(sys_clk),
 		.rst_btn(rst_btn),

@@ -1,4 +1,4 @@
-# This Makefile module includes rules for building the final binary for the icestick FPGA
+# This Makefile module includes rules for building the final binary for the Icestick FPGA
 
 REF_FREQ=12
 SYS_FREQ=$(shell cat $(SRC_DIR)/config.vh | grep '`define SYS_FREQ' | awk '{print $$3}')
