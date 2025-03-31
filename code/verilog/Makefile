@@ -1,4 +1,6 @@
-.PHONY: clean sim bin default
+.PHONY: clean sim bin default \
+	icestick-spi icestick-uart \
+	ice40hx8k-spi ice40hx8k-uart
 
 
 # Directory declarations
@@ -30,6 +32,11 @@ bin: \
 		$(BIN_DIR)/ice40hx8k-spi.bin \
 		$(BIN_DIR)/ice40hx8k-uart.bin;
 
+# Build specific binaries
+icestick-spi: $(BIN_DIR)/icestick-spi.bin
+icestick-uart: $(BIN_DIR)/icestick-uart.bin
+ice40hx8k-spi: $(BIN_DIR)/ice40hx8k-spi.bin
+ice40hx8k-uart: $(BIN_DIR)/ice40hx8k-uart.bin
 
 # Run all simulations
 sim: \
