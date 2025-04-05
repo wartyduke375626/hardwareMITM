@@ -6,6 +6,8 @@
 #define SCK_PIN 14   // D5
 #define RST_PIN 16   // D0
 
+#define SPI_FREQ 1000000 // 1MHz
+
 #define TPM_ACCESS 0xD40000
 #define TPM_STATUS 0xD40018
 #define TPM_FIFO 0xD40024
@@ -17,8 +19,12 @@
 #define IS_STATUS_DATA_AVAIL(status) (0x10 & status)
 #define IS_STATUS_CMD_READY(status) (0x40 & status)
 
+
+SPISettings spiSettings(SPI_FREQ, MSBFIRST, SPI_MODE0);
+
 uint8_t readRegister(uint32_t reg)
 {
+    SPI.beginTransaction(spiSettings);
     digitalWrite(CS_PIN, LOW);
     SPI.transfer(0x80);
     SPI.transfer((reg >> 16) & 0xFF);
@@ -26,11 +32,13 @@ uint8_t readRegister(uint32_t reg)
     SPI.transfer(reg & 0xFF);
     uint8_t value = SPI.transfer(0x00);
     digitalWrite(CS_PIN, HIGH);
+    SPI.endTransaction();
     return value;
 }
 
 void writeRegister(uint32_t reg, uint8_t value)
 {
+    SPI.beginTransaction(spiSettings);
     digitalWrite(CS_PIN, LOW);
     SPI.transfer(0x00);
     SPI.transfer((reg >> 16) & 0xFF);
@@ -38,6 +46,7 @@ void writeRegister(uint32_t reg, uint8_t value)
     SPI.transfer(reg & 0xFF);
     SPI.transfer(value);
     digitalWrite(CS_PIN, HIGH);
+    SPI.endTransaction();
 }
 
 void printHexData(uint8_t* buffer, size_t len)
@@ -218,8 +227,6 @@ void setup()
     pinMode(RST_PIN, OUTPUT);
     pinMode(CS_PIN, OUTPUT);
     SPI.begin();
-    SPI.setDataMode(SPI_MODE0);
-    SPI.setClockDivider(SPI_CLOCK_DIV16);
 
     Serial.println("Ressetting TPM...");
     digitalWrite(RST_PIN, LOW);

@@ -55,6 +55,7 @@ sim: \
 		$(SIM_DIR)/buses/uart/UartController_test.vcd \
 		$(SIM_DIR)/buses/uart/UartDriver_test.vcd \
 		$(SIM_DIR)/SpiTopLevelModule_test.vcd \
+		$(SIM_DIR)/TpmGetRandomTopLevelModule_test.vcd \
 		$(SIM_DIR)/UartTopLevelModule_test.vcd \
 		$(SIM_DIR)/proprietary_eeprom/MitmLogic_test.vcd \
 		$(SIM_DIR)/proprietary_eeprom/BusControl_test.vcd \

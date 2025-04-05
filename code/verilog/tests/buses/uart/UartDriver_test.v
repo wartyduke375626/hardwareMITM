@@ -16,7 +16,7 @@ module UartDriver_test();
 	localparam BIT_DURATION_NS = 1_000_000_000 / BAUD_RATE;	// how long a bit lasts on the bus line (ns)
 	localparam BIT_DURATION_CLK = SYS_CLK / BAUD_RATE; // how many system clock cycles a bit lasts on the bus line
 	
-	localparam NUM_DATA_BITS = 12;
+	localparam NUM_DATA_BITS = 8;
 	
 	// test signals
 	wire rx_new_data;
@@ -88,21 +88,21 @@ module UartDriver_test();
 		#(4*CLK_PERIOD_NS);
 		
 		// generate communication
-		rx_data_to_send = {12'h4c5};
+		rx_data_to_send = {8'h85};
 		simulate_frame();
 		
 		// wait random time
 		#(BIT_DURATION_NS + 697);
 		
 		// generate more communication
-		rx_data_to_send = {12'hf01};
+		rx_data_to_send = {8'hf1};
 		simulate_frame();
 		
 		// wait random time
 		#(BIT_DURATION_NS/2 + 1223);
 		
 		// generate more communication
-		rx_data_to_send = {12'h51d};
+		rx_data_to_send = {8'h3d};
 		simulate_frame();
 	end
 	
@@ -121,7 +121,7 @@ module UartDriver_test();
 		wait (tx_ready == 1'b1);
 		
 		// send some data over TX line
-		tx_data <= {12'h0b5};
+		tx_data <= {8'h0b};
 		
 		// tx start command
 		tx_start = 1'b1;
@@ -135,7 +135,7 @@ module UartDriver_test();
 		#(2*BIT_DURATION_NS + 1354);
 		
 		// send some more data over TX line
-		tx_data <= {12'h4e6};
+		tx_data <= {8'h6e};
 		
 		// tx start command
 		tx_start = 1'b1;
@@ -149,7 +149,7 @@ module UartDriver_test();
 		#(2*BIT_DURATION_NS + 637);
 		
 		// send some more data over TX line
-		tx_data <= {12'he91};
+		tx_data <= {8'h91};
 		
 		// tx start command
 		tx_start = 1'b1;

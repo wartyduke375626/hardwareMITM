@@ -16,19 +16,18 @@ module EdgeDetector #(
 	input wire sig,
 	
 	// outputs
-	output reg edge_sig = 1'b0
+	output wire edge_sig
 );
 
 	// internal registers
 	reg old_sig = (FALL_EDGE == 0) ? 1'b1 : 1'b0;
+	
+	// edge detection logic
+	assign edge_sig = (FALL_EDGE == 0) ? (sig & (~old_sig)) : ((~sig) & old_sig);
 
 	always @ (posedge sys_clk)
 	begin
-		
-		// edge detection logic
-		edge_sig <= (FALL_EDGE == 0) ? (sig & (~old_sig)) : ((~sig) & old_sig);
-		
-		// save old signal value
+		// sample and save old signal value
 		old_sig <= sig;
 	end
 

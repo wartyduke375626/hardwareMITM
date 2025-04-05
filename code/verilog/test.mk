@@ -73,6 +73,10 @@ $(SIM_DIR)/SpiTopLevelModule_test.vcd: $(VVP_DIR)/SpiTopLevelModule_test.vvp | $
 	vvp $<
 	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
 
+$(SIM_DIR)/TpmGetRandomTopLevelModule_test.vcd: $(VVP_DIR)/TpmGetRandomTopLevelModule_test.vvp | $(SIM_DIR)
+	vvp $<
+	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
+
 $(SIM_DIR)/UartTopLevelModule_test.vcd: $(VVP_DIR)/UartTopLevelModule_test.vvp | $(SIM_DIR)
 	vvp $<
 	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
@@ -158,6 +162,10 @@ $(VVP_DIR)/UartDriver_test.vvp: $(TEST_DIR)/buses/uart/UartDriver_test.v $(SRC_D
 
 # Top level module tests:
 $(VVP_DIR)/SpiTopLevelModule_test.vvp: $(TEST_DIR)/SpiTopLevelModule_test.v $(SRC_DIR)/TopLevelModule.v $(SRC_DIR)/MitmLogic.v \
+		$(SRC_DIR)/buses/BusInterface.v $(SRC_DIR)/buses/spi/*.v $(SRC_DIR)/io/*.v $(SRC_DIR)/primitives/*.v | $(VVP_DIR)
+	iverilog $(IV_FLAGS) $^ -o $@
+
+$(VVP_DIR)/TpmGetRandomTopLevelModule_test.vvp: $(TEST_DIR)/TpmGetRandomTopLevelModule_test.v $(SRC_DIR)/TopLevelModule.v $(SRC_DIR)/MitmLogic.v \
 		$(SRC_DIR)/buses/BusInterface.v $(SRC_DIR)/buses/spi/*.v $(SRC_DIR)/io/*.v $(SRC_DIR)/primitives/*.v | $(VVP_DIR)
 	iverilog $(IV_FLAGS) $^ -o $@
 
