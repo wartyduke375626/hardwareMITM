@@ -120,7 +120,7 @@ module MitmLogic #(
 				
 				STATE_WAIT_TPM_FIFO_READ: begin
 					if (tpm_new_rw_reg_val == 1'b1) begin
-						if (tpm_rw_reg[31] == 1'b1 && tpm_rw_reg[23:0] == 24'hd40024) begin
+						if (tpm_rw_reg[31] == 1'b1 && tpm_rw_reg[7:0] == 8'h24) begin
 							state <= STATE_MITM;
 						end
 					end

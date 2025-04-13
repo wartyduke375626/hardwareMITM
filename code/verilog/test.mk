@@ -123,7 +123,7 @@ $(VVP_DIR)/SerialWriteBuffer_test.vvp: $(TEST_DIR)/primitives/SerialWriteBuffer_
 
 # IO:
 $(VVP_DIR)/IoHandler_test.vvp: $(TEST_DIR)/io/IoHandler_test.v $(SRC_DIR)/io/IoHandler.v \
-		$(SRC_DIR)/io/SignalDebouncer.v | $(VVP_DIR)
+		$(SRC_DIR)/io/SignalDebouncer.v $(SRC_DIR)/io/Synchronizer.v | $(VVP_DIR)
 	iverilog $(IV_FLAGS) $^ -o $@
 
 $(VVP_DIR)/SignalDebouncer_test.vvp: $(TEST_DIR)/io/SignalDebouncer_test.v $(SRC_DIR)/io/SignalDebouncer.v | $(VVP_DIR)

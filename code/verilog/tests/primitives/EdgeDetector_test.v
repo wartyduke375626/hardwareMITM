@@ -20,6 +20,7 @@ module EdgeDetector_test();
 	// test registers
 	reg sys_clk = 1'b0;
 	reg sig = 1'b0;
+	reg sig_sync = 1'b0;
 	
 	// helper variables
 	integer i;
@@ -29,7 +30,7 @@ module EdgeDetector_test();
 		.FALL_EDGE(FALL_EDGE)
 	) UUT (
 		.sys_clk(sys_clk),
-		.sig(sig),
+		.sig(sig_sync),
 		.edge_sig(edge_sig)
 	);
 	
@@ -38,6 +39,12 @@ module EdgeDetector_test();
 	begin
 		#(CLK_PERIOD_NS / 2);
 		sys_clk = ~sys_clk;
+	end
+	
+	// make signal changes synchronous
+	always @ (posedge sys_clk)
+	begin
+		sig_sync <= sig;
 	end
 	
 	// test code

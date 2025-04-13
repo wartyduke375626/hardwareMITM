@@ -34,6 +34,9 @@ module IoHandler #(
 	localparam DEBOUNCE_COUNT = DEBOUNCE_LEN_US * (SYS_FREQ_HZ / 1_000_000);
 
 	// internal signals
+	wire sync_rst;
+	wire sync_mode_select;
+	
 	wire debounced_mode_select;
 	
 	assign mode_leds = mode_select;
@@ -50,13 +53,21 @@ module IoHandler #(
 	
 	/******************** MODULE INSTANTIATION ********************/
 	
+	Synchronizer #(
+		.WIDTH(2)
+	) btnSynchronizer (
+		.sys_clk(sys_clk),
+		.in_line({rst_btn, mode_select_btn}),
+		.out_line({sync_rst, sync_mode_select})
+	);
+	
 	SignalDebouncer #(
 		.DEBOUNCE_COUNT(DEBOUNCE_COUNT),
 		.IN_ACTIVE_LOW(BUTTONS_ACTIVE_LOW),
 		.OUT_ACTIVE_LOW(0)
 	) modeSelectDebouncer (
 		.sys_clk(sys_clk),
-		.in_sig(mode_select_btn),
+		.in_sig(sync_mode_select),
 		.out_sig(debounced_mode_select)
 	);
 	
@@ -66,7 +77,7 @@ module IoHandler #(
 		.OUT_ACTIVE_LOW(DEBOUNCED_RST_ACTIVE_LOW)
 	) rstDebouncer (
 		.sys_clk(sys_clk),
-		.in_sig(rst_btn),
+		.in_sig(sync_rst),
 		.out_sig(debounced_rst)
 	);
 	

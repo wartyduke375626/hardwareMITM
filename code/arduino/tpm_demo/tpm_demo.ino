@@ -8,9 +8,11 @@
 
 #define SPI_FREQ 1000000 // 1MHz
 
-#define TPM_ACCESS 0xD40000
-#define TPM_STATUS 0xD40018
-#define TPM_FIFO 0xD40024
+#define TPM_BASE_ADDR 0xD40000
+
+#define TPM_ACCESS (TPM_BASE_ADDR + 0x00)
+#define TPM_STATUS (TPM_BASE_ADDR + 0x18)
+#define TPM_FIFO (TPM_BASE_ADDR + 0x24)
 
 #define WAIT_TIMEOUT 50
 
@@ -22,31 +24,77 @@
 
 SPISettings spiSettings(SPI_FREQ, MSBFIRST, SPI_MODE0);
 
-uint8_t readRegister(uint32_t reg)
+bool tpmReadReg(uint32_t reg, uint8_t* buffer, uint8_t len)
 {
     SPI.beginTransaction(spiSettings);
     digitalWrite(CS_PIN, LOW);
-    SPI.transfer(0x80);
+
+    // start read transaction
+    SPI.transfer(0x80 | (len - 1) & 0x7F);
     SPI.transfer((reg >> 16) & 0xFF);
     SPI.transfer((reg >> 8) & 0xFF);
-    SPI.transfer(reg & 0xFF);
-    uint8_t value = SPI.transfer(0x00);
+    uint8_t wait_state = SPI.transfer(reg & 0xFF);
+
+    // wait till TPM inserts wait states
+    size_t wait = 0;
+    while(wait_state & 0x01 == 0x00)
+    {
+        wait_state = SPI.transfer(0x00);
+        ++wait;
+        if (wait == WAIT_TIMEOUT) {
+            Serial.println("TPM read register: waiting for wait state timed out.");
+            Serial.printf("\tMISO value: 0x%02X\r\n", wait_state);
+            return false;
+        }
+        delayMicroseconds(1);
+    }
+
+    // read values
+    for (size_t i = 0; i < len; ++i)
+    {
+        buffer[i] = SPI.transfer(0x00);
+    }
+
     digitalWrite(CS_PIN, HIGH);
     SPI.endTransaction();
-    return value;
+    return true;
 }
 
-void writeRegister(uint32_t reg, uint8_t value)
+bool tpmWriteReg(uint32_t reg, uint8_t* buffer, uint8_t len)
 {
     SPI.beginTransaction(spiSettings);
     digitalWrite(CS_PIN, LOW);
-    SPI.transfer(0x00);
+
+    // start write transaction
+    SPI.transfer(0x00 | (len - 1) & 0x7F);
     SPI.transfer((reg >> 16) & 0xFF);
     SPI.transfer((reg >> 8) & 0xFF);
     SPI.transfer(reg & 0xFF);
-    SPI.transfer(value);
+
+    // try sending first byte till TPM inserts wait states
+    size_t wait = 0;
+    while(1)
+    {
+        uint8_t wait_state = SPI.transfer(buffer[0]);
+        if (wait_state != 0x00) break;
+        ++wait;
+        if (wait == WAIT_TIMEOUT) {
+            Serial.println("TPM write register: waiting for wait state timed out.");
+            Serial.printf("\tMISO value: 0x%02X\r\n", wait_state);
+            return false;
+        }
+        delayMicroseconds(1);
+    }
+
+    // write other values
+    for (size_t i = 1; i < len; ++i)
+    {
+        SPI.transfer(buffer[i]);
+    }
+
     digitalWrite(CS_PIN, HIGH);
     SPI.endTransaction();
+    return true;
 }
 
 void printHexData(uint8_t* buffer, size_t len)
@@ -65,12 +113,12 @@ bool tpmSendCommand(uint8_t* cmd_buffer, size_t cmd_len, uint8_t* resp_buffer, s
     size_t wait = 0;
     while(1)
     {
-        status = readRegister(TPM_STATUS);
+        if (!tpmReadReg(TPM_STATUS, &status, 1)) return false;
         if (IS_STATUS_CMD_READY(status)) break;
         ++wait;
         if (wait == WAIT_TIMEOUT) {
             Serial.println("Waiting for command ready timed out.");
-            Serial.printf("\tTPM_STATUS value: 0x%02X\n", status);
+            Serial.printf("\tTPM_STATUS value: 0x%02X\r\n", status);
             return false;
         }
         delay(1);
@@ -79,21 +127,21 @@ bool tpmSendCommand(uint8_t* cmd_buffer, size_t cmd_len, uint8_t* resp_buffer, s
     // write command FIFO
     for (size_t i = 0; i < cmd_len; ++i)
     {
-        writeRegister(TPM_FIFO, cmd_buffer[i]);
+        if(!tpmWriteReg(TPM_FIFO, cmd_buffer + i, 1)) return false;
     }
 
     
-    status = readRegister(TPM_STATUS);
+    if (!tpmReadReg(TPM_STATUS, &status, 1)) return false;
     // wait for status valid
     wait = 0;
     while(1)
     {
-        status = readRegister(TPM_STATUS);
+        if (!tpmReadReg(TPM_STATUS, &status, 1)) return false;
         if (IS_STATUS_VALID(status)) break;
         ++wait;
         if (wait == WAIT_TIMEOUT) {
             Serial.println("Waiting for status valid timed out.");
-            Serial.printf("\tTPM_STATUS value: 0x%02X\n", status);
+            Serial.printf("\tTPM_STATUS value: 0x%02X\r\n", status);
             return false;
         }
         delay(1);
@@ -101,24 +149,25 @@ bool tpmSendCommand(uint8_t* cmd_buffer, size_t cmd_len, uint8_t* resp_buffer, s
     // assert expect bit is clear
     if (IS_STATUS_EXPECT(status)) {
         Serial.println("Fatal error while sending command: expect bit is not clear.");
-        Serial.printf("\tTPM_STATUS value: 0x%02X\n", status);
+        Serial.printf("\tTPM_STATUS value: 0x%02X\r\n", status);
         return false;
     }
 
     // set go bit
-    status = readRegister(TPM_STATUS);
-    writeRegister(TPM_STATUS, status | 0x20);
+    if (!tpmReadReg(TPM_STATUS, &status, 1)) return false;
+    status |= 0x20;
+    if(!tpmWriteReg(TPM_STATUS, &status, 1)) return false;
 
     // wait for data avalable
     wait = 0;
     while(1)
     {
-        status = readRegister(TPM_STATUS);
+        if (!tpmReadReg(TPM_STATUS, &status, 1)) return false;
         if (IS_STATUS_VALID(status) && IS_STATUS_DATA_AVAIL(status)) break;
         ++wait;
         if (wait == WAIT_TIMEOUT) {
             Serial.println("Waiting for data available timed out.");
-            Serial.printf("\tTPM_STATUS value: 0x%02X\n", status);
+            Serial.printf("\tTPM_STATUS value: 0x%02X\r\n", status);
             return false;
         }
         delay(1);
@@ -127,20 +176,20 @@ bool tpmSendCommand(uint8_t* cmd_buffer, size_t cmd_len, uint8_t* resp_buffer, s
     // read response data
     for (size_t i = 0; i < resp_len; ++i)
     {
-        resp_buffer[i] = readRegister(TPM_FIFO);
+        if (!tpmReadReg(TPM_FIFO, resp_buffer + i, 1)) return false;
     }
     
-    status = readRegister(TPM_STATUS);
+    if (!tpmReadReg(TPM_STATUS, &status, 1)) return false;
     // wait for status valid
     wait = 0;
     while(1)
     {
-        status = readRegister(TPM_STATUS);
+        if (!tpmReadReg(TPM_STATUS, &status, 1)) return false;
         if (IS_STATUS_VALID(status)) break;
         ++wait;
         if (wait == WAIT_TIMEOUT) {
             Serial.println("Waiting for status valid timed out.");
-            Serial.printf("\tTPM_STATUS value: 0x%02X\n", status);
+            Serial.printf("\tTPM_STATUS value: 0x%02X\r\n", status);
             return false;
         }
         delay(1);
@@ -148,13 +197,14 @@ bool tpmSendCommand(uint8_t* cmd_buffer, size_t cmd_len, uint8_t* resp_buffer, s
     // assert data available bit is clear
     if (IS_STATUS_DATA_AVAIL(status)) {
         Serial.println("Fatal error while reading response: data available bit is not clear.");
-        Serial.printf("\tTPM_STATUS value: 0x%02X\n", status);
+        Serial.printf("\tTPM_STATUS value: 0x%02X\r\n", status);
         return false;
     }
 
     // set command ready to restore state machine
-    status = readRegister(TPM_STATUS);
-    writeRegister(TPM_STATUS, status | 0x40);
+    if (!tpmReadReg(TPM_STATUS, &status, 1)) return false;
+    status |= 0x40;
+    if(!tpmWriteReg(TPM_STATUS, &status, 1)) return false;
 
     return true;
 }
@@ -175,7 +225,7 @@ bool tpmStartup()
     uint16_t rc = resp[9] | ((resp[8] & 0x0F) << 8);
     if (rc != 0) {
         Serial.println("Fatal error while executing TPM Startup command: response code is not SUCCESS.");
-        Serial.printf("\tTPM_RC value: 0x%03X\n", rc);
+        Serial.printf("\tTPM_RC value: 0x%03X\r\n", rc);
         Serial.print("\tFull response data: ");
         printHexData(resp, sizeof(resp));
         Serial.println();
@@ -202,7 +252,7 @@ bool tpmGetRandom(uint16_t num_bytes)
     uint16_t rc = resp[9] | ((resp[8] & 0x0F) << 8);
     if (rc != 0) {
         Serial.println("Fatal error while executing TPM GetRandom command: response code is not SUCCESS.");
-        Serial.printf("\tTPM_RC value: 0x%03X\n", rc);
+        Serial.printf("\tTPM_RC value: 0x%03X\r\n", rc);
         Serial.print("\tFull response data: ");
         printHexData(resp, resp_len);
         Serial.println();
@@ -236,31 +286,33 @@ void setup()
     delay(1000);
 
     Serial.println("Requesting locality 0...");
-    uint8_t value = readRegister(TPM_ACCESS);
-    Serial.printf("TPM_ACCESS before: 0x%02X\n", value);
-    writeRegister(TPM_ACCESS, 0x02);
+    uint8_t value;
+    if (!tpmReadReg(TPM_ACCESS, &value, 1)) while(1); // halt
+    Serial.printf("TPM_ACCESS before: 0x%02X\r\n", value);
+    value = 0x02;
+    if(!tpmWriteReg(TPM_ACCESS, &value, 1)) while(1); // halt
     delay(100);
-    value = readRegister(TPM_ACCESS);
-    Serial.printf("TPM_ACCESS after: 0x%02X\n", value);
+    if (!tpmReadReg(TPM_ACCESS, &value, 1)) while(1); // halt
+    Serial.printf("TPM_ACCESS after: 0x%02X\r\n", value);
     if (value != 0xA1) {
         Serial.println("Locality failed!");
-        return;
+        while(1); // halt
     }
 
-    value = readRegister(TPM_STATUS);
-    Serial.printf("TPM_STATUS after: 0x%02X\n", value);
+    if (!tpmReadReg(TPM_STATUS, &value, 1)) while(1); // halt
+    Serial.printf("TPM_STATUS after: 0x%02X\r\n", value);
 
     Serial.println("Sending TPM2_Startup...");
     if (!tpmStartup()) {
         Serial.println("Startup failed!");
-        return;
+        while(1); // halt
     }
 
     /*
     Serial.println("Relinquishing locality...");
     writeRegister(TPM_ACCESS, 0x20);
     access = readRegister(TPM_ACCESS);
-    Serial.printf("TPM_ACCESS after release: 0x%02X\n", access);
+    Serial.printf("TPM_ACCESS after release: 0x%02X\r\n", access);
     */
 }
 
@@ -269,7 +321,7 @@ void loop()
     Serial.println("Sending TPM2_GetRandom...");
     if (!tpmGetRandom(16)) {
         Serial.println("GetRandom failed!");
-        return;
+        while(1); // halt
     }
     delay(3000);
 }

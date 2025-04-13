@@ -1,7 +1,7 @@
 \chapter{Príklady MITM útokov}
 \label{kap:priklady}
 
-V tejto kapitole uvedieme dva príklady použitia FPGA MITM obvodu, ktorého implementáciu sme opísali v kapitole \ref{kap:implementacia}. Prvým bude jednoduchý príklad zasahovania do komunikácie na UART zbernici, na ktorom demonštrujeme detailnejšie celý proces od navrhnutie MITM logiky po zapojenie a spustenie obvodu. Druhým príkladom je útok na funkciu náhodného generátora externého TPM modulu zapojeného pripojeného k reálnemu systému na doske Raspberry PI.
+V tejto kapitole uvedieme dva príklady použitia FPGA MITM obvodu, ktorého implementáciu sme opísali v kapitole \ref{kap:implementacia}. Prvým bude jednoduchý príklad zasahovania do komunikácie na UART zbernici, na ktorom demonštrujeme detailnejšie celý proces od navrhnutie MITM logiky po zapojenie a spustenie obvodu. Druhým príkladom je útok na funkciu náhodného generátora externého TPM modulu pripojeného k mikrokontroléru ESP8266.
 
 \section{Príklad 1 -- zasahovanie do UART komunikácie}
 Ako prvý uvedieme jednoduchý príklad MITM obvodu, ktorý bude zasahovať do UART komunikácie. Cieľom tohoto príkladu je ukázať postup pri implementácii hardvérového MITM útoku s využitím nášho obvodu. FPGA obvodu bude možné prepínať medzi štyrmi režimami, pričom jeden z nich bude transparentný -- žiadne zásahy do komunikácie. V ostatných troch režimoch implementujeme tri rôzne logiky, ktoré budú rozličnými spôsobmi zasahovať do komunikácie. Cieľom je demonštrovať viaceré možnosti, ktoré naša implementácia poskytuje. Najskôr ukážeme detailný návrh MITM logiky, následne konfiguráciu a syntézu FPGA obvodu. Na záver ukážeme fyzické zapojenie hardvéru a spustenie útoku.
@@ -50,7 +50,7 @@ V prípade, že v ktoromkoľvek takte bude zapnutý vstup globálny reset, prejd
 V rámci MITM logiky definujeme okrem transparentného režimu, tri ukážkové falošné režimy. V prvom režime nahrádzame v jednom smere ľubovoľnú hodnotu za konštantu 0x23 (ASCI hodnota znaku \#) a v opačnom smere komunikáciu úplne blokujeme. (V stave \texttt{WRITE} nezapneme signál pre spustenie vysielania.) Ďalší falošný režim bude symetrický, pričom vymeníme smer, v ktorom nahrádzame dáta konštantou, so smerom, v ktorom komunikáciu blokujeme. Ako konštantu budeme tentokrát posielať hodnotu 0x24 (ASCI hodnota znaku \$). V poslednom režime budeme nad vybranými dátami realizovať transformáciu ROT13 oboma smermi. Pokiaľ prečítame hodnotu z rozsahu A--Z alebo a--z, dáta zrotujeme, v opačnom prípade pošleme hodnotu, ktorú sme prečítali.
 
 \subsection{Konfigurácia a syntéza FPGA obvodu}
-Ďalej je potrebné nakonfigurovať parametre v súbore \texttt{config.vh}. Najdôležitejším parametrom je frekvencia systémových hodín, ktorého obmedzenia sme spomenuli v časti \ref{subsek:sysFreq}. Pre tento účel je najskôr potrebné určiť symbolovú rýchlosť zbernice UART. V našom prípade budem používať štandardnú rýchlosť 115\,200, čo v zodpovedá 115.2\,kHz. Táto frekvencia vysielania dát je približná nakoľko UART protokol povoľuje odchýlku 5\%. Frekvenciu systémových hodín nastavíme preto na 16\,MHz, čo je minimálna hodnota, ktorú je použitý PLL obvod schopný generovať. Ďalšie parametre, ktoré je potrebné upraviť sú spomenutá symbolová rýchlosť, počet bitov jedného rámca -- v prípade štandardnej UART komunikácie 8 a počet režimov MITM logiky, ktoré sme v predošlej časti \ref{subsek:uartMitmLogic} definovali štyri. Parametre týkajúce sa SPI zbernice nemusíme konfigurovať. Ostatné parametre ponecháme na predvolenej hodnote. V tabuľke \ref{tab:uartConfig} nakonfigurované hodnoty všetkých relevantných parametrov.
+Ďalej je potrebné nakonfigurovať parametre v súbore \texttt{config.vh}. Najdôležitejším parametrom je frekvencia systémových hodín, ktorého obmedzenia sme spomenuli v časti \ref{subsek:sysFreq}. Pre tento účel je najskôr potrebné určiť symbolovú rýchlosť zbernice UART. V našom prípade budeme používať štandardnú rýchlosť 115\,200, čo v zodpovedá 115.2\,kHz. Táto frekvencia vysielania dát je približná nakoľko UART protokol povoľuje odchýlku 5\%. Frekvenciu systémových hodín nastavíme preto na 16\,MHz, čo je minimálna hodnota, ktorú je použitý PLL obvod schopný generovať. Ďalšie parametre, ktoré je potrebné upraviť sú spomenutá symbolová rýchlosť, počet bitov jedného rámca -- v prípade štandardnej UART komunikácie 8 a počet režimov MITM logiky, ktoré sme v predošlej časti \ref{subsek:uartMitmLogic} definovali štyri. Parametre týkajúce sa SPI zbernice nemusíme konfigurovať. Ostatné parametre ponecháme na predvolenej hodnote. V tabuľke \ref{tab:uartConfig} nakonfigurované hodnoty všetkých relevantných parametrov.
 
 \begin{table}
     \caption[Príklad konfigurácie parametrov pre UART]{Príklad konfigurácie parametrov pre UART.}
@@ -98,3 +98,28 @@ Hardvér zapojíme podľa schémy na obrázku \ref{obr:schemeUartMitm}.
 Funkcionalitu môžeme následne demonštrovať na jednoduchom scenári: USB konce prevodníkov pripojíme k všeobecnému počítaču. Zároveň zapojíme cez USB aj samotnú dosku icestick kvôli napájaniu (Dátová komunikácia medzi PC a doskou icestick už nie je potrebná, nakoľko FPGA konfiguráciu sme na dosku nahrali v predošlom kroku.) Následne môžeme otvoriť dva virtuálne sériové terminály pripojené k USB prevodníkom. V transparentnom režime MITM logiky sa všetok vstup do prvého terminálu zobrazí na druhom (a naopak). Prepínaním medzi režimami MITM logiky pomocou príslušného tlačidla možno vidieť realizáciu zásahov do komunikácie pri rôznych režimoch, ktoré sme opísali v časti \ref{subsek:uartMitmLogic}.
 
 \section{Príklad 2 -- útok na komunikáciu s TPM} \label{sek:example2}
+V tejto časti predstavíme o niečo komplexnejší útok na komunikáciu medzi mikrokontrolérom a externým TPM modulom. Na mikrokontroléri implementujeme program, ktorý bude periodicky získavať pomocou náhodne generované čísla pomocou TPM. Následne medzi TPM a mikrokontrolér zapojíme náš FPGA obvod, na ktorom implementujeme MITM logiku, ktorá bude modifikovať náhodne vygenerované bity, napríklad za konštantné. Konkrétne použijeme mikrokontrolér ESP8266, ktorý bude cez FPGA pripojený k TPM modulu SLB9670.
+
+\subsection{TPM SPI protokol}
+TPM štandard presne definuje spôsob komunikácie s TPM v prípade, že je použitá zbernica SPI \cite{tpmTis}. V tejto časti uvedieme niektoré detaily zo štandardu, relevantné pre porozumenie princípu útoku na generovanie náhodných čísel. TPM je v role slave zariadenia a komunikáciu riadi druhá strana. Počas SPI komunikácie je počet prenesených bitov (a teda hodinových taktov na SCLK linke) je vždy zarovnaný na celý bajtov. Bity v rámci bajtu sú vždy prenášané od najvýznamnejšieho bitu a rovnako v prípade viac-bajtových hodnôt sú bajty prenášané od najvýznamnejšieho. Štandard zároveň požaduje podporu pre SCLK mód 0 na TPM zariadení.
+
+Na vyššej úrovni komunikácia s TPM prebieha čítaním a zápisom do špecifických TPM registrov. Čítanie a zápis do registra potom vyzerá nasledovne: Najvýznamnejší bit prvého bajtu (posielaný mastrom na MOSI linke) určuje či ide o operáciu čítania (1) alebo zápisu (0). Nasledovných sedem bitov predstavuje počet bajtov, ktoré chceme zapísať/prečítať mínus jeden. Napríklad 0x80 znamená, že chceme prečítať jeden bajt. Nasledujú tri bajty, ktoré určujú adresu registra. V prípade, že ide o operáciu zápisu po adrese nasledujú jednotlivé dáta, ktoré sa do registra majú uložiť. V prípade operácie čítania je potrebné ďalej taktovať na SCLK linke dostatočný počet bajtov, aby malo TPM priestor odpovedať. V princípe to znamená \uv{poslať} príslušný počet bajtov, na ktorých hodnote nezáleží a podstatné sú iba dáta vysielané z TPM po MISO linke. Na obrázku \ref{obr:tpmRW} je znázornené čítanie a zápis do TPM registra.
+
+\begin{figure}
+    \centering
+    \subfloat[Prečítanie jedného bajtu (0x90) z registra 0xD40018.]{\includegraphics[width=1\textwidth]{images/signals/tpmRead.pdf}}
+    \vfill
+    \subfloat[Zápis dvoch bajtov (0x8001) do registra 0xD40024.]{\includegraphics[width=1\textwidth]{images/signals/tpmWrite.pdf}}
+    \caption[Komunikácia s TPM]{Komunikácia s TPM.}
+    \label{obr:tpmRW}
+\end{figure}
+
+Jednotlivé registre sú adresované tzv. ofsetom od bázovej adresy. Bázová adresa sa na platformách zvykne využívať na zabezpečenie správneho mapovania TPM registrov do pamäte v prípade použitia memory mapped I/O. V našom jednoduchom prípade na bázovej adrese nezáleží, podstatné je aby počas celej komunikácie bola konštantná. Pre účely tejto práce spomenieme dva podstatné registre.
+
+\textbf{TPM STATUS} register
+
+\textbf{TPM FIFO} register
+
+\subsection{MITM logika pre útok na komunikáciu s TPM}
+
+\subsection{Fyzická realizácia útoku}

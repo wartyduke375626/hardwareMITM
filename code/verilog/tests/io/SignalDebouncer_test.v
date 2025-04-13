@@ -22,6 +22,7 @@ module SignalDebouncer_test();
 	// test registers
 	reg sys_clk = 1'b0;
 	reg in_sig = 1'b1;
+	reg in_sig_sync = 1'b0;
 	
 	// helper task to simulate noisy random signal
 	task gen_noisy_signal();
@@ -44,7 +45,7 @@ module SignalDebouncer_test();
 		.OUT_ACTIVE_LOW(OUT_ACTIVE_LOW)
 	) UUT (
 		.sys_clk(sys_clk),
-		.in_sig(in_sig),
+		.in_sig(in_sig_sync),
 		.out_sig(out_sig)
 	);
 	
@@ -53,6 +54,12 @@ module SignalDebouncer_test();
 	begin
 		#(CLK_PERIOD_NS / 2);
 		sys_clk = ~sys_clk;
+	end
+	
+	// make signal changes synchronous
+	always @ (posedge sys_clk)
+	begin
+		in_sig_sync <= in_sig;
 	end
 	
 	// test code
