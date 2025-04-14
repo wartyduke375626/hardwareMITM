@@ -73,12 +73,117 @@ module TpmGetRandomTopLevelModule_test();
 		if0_mosi_in = 1'b0;
 	endtask
 	
+	// helper task to simulate TPM read register sequence
+	task tpm_read_reg(input [23:0] addr, integer r_size, integer num_waits, input [32*8:0] r_data);
+		integer i;
+		reg [31:0] tpm_cmd;
+		reg [7:0] temp;
+		
+		temp[7] = 1'b1;
+		temp[6:0] = (r_size & 7'h7f) - 1;
+		tpm_cmd = {
+			temp,  // Command: read 'r_size' bytes
+			addr   // register address
+		};
+		
+		// send command
+		if0_ss_in = (SS_ACTIVE_LOW == 0) ? 1'b1 : 1'b0;
+		#(SPI_CLK_PERIOD_NS);
+		for (i = 3; i >= 0; i--) // most significat byte first
+		begin
+			temp = (tpm_cmd >> (8 * i)) & 8'hff;
+			// if no waits states shall be sent,
+			// slave asserts ready by sending 0x01 on MISO line during last address byte
+			if (i == 0 && num_waits == 0) begin
+				spi_transfer(8'h01, temp);
+			end
+			else begin
+				spi_transfer(8'h00, temp);
+			end
+			#(SPI_CLK_PERIOD_NS);
+		end
+
+		// wait states
+		for (i = 0; i < num_waits; i++)
+		begin
+			if (i == num_waits - 1) begin
+				spi_transfer(8'h01, 8'h00);
+			end
+			else begin
+				spi_transfer(8'h00, 8'h00);
+			end
+			#(SPI_CLK_PERIOD_NS);
+		end
+		
+		// read data bytes
+		for (i = r_size - 1; i >= 0; i--) // most significat byte first
+		begin
+			temp = (r_data >> (8 * i)) & 8'hff;
+			spi_transfer(temp, 8'h00);
+			#(SPI_CLK_PERIOD_NS);
+		end
+		
+		if0_ss_in = (SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1;
+		#(SPI_CLK_PERIOD_NS);
+	endtask
+	
+	// helper task to simulate TPM write register sequence
+	task tpm_write_reg(input [23:0] addr, integer w_size, integer num_waits, input [32*8:0] w_data);
+		integer i;
+		reg [31:0] tpm_cmd;
+		reg [7:0] temp;
+		
+		temp[7] = 1'b0;
+		temp[6:0] = (w_size & 7'h7f) - 1;
+		tpm_cmd = {
+			temp,  // Command: write 'w_size' bytes
+			addr   // register address
+		};
+		
+		// send command
+		if0_ss_in = (SS_ACTIVE_LOW == 0) ? 1'b1 : 1'b0;
+		#(SPI_CLK_PERIOD_NS);
+		for (i = 3; i >= 0; i--) // most significat byte first
+		begin
+			temp = (tpm_cmd >> (8 * i)) & 8'hff;
+			spi_transfer(8'h00, temp);
+			#(SPI_CLK_PERIOD_NS);
+		end
+		
+		// attempt sending first data byte but TPM asserts wait states
+		temp = (w_data >> (8 * (w_size - 1))) & 8'hff;
+		for (i = 0; i < num_waits; i++)
+		begin
+			spi_transfer(8'h00, temp);
+			#(SPI_CLK_PERIOD_NS);
+		end
+		
+		// now send the data bytes correctly
+		for (i = w_size - 1; i >= 0; i--) // most significat byte first
+		begin
+			temp = (w_data >> (8 * i)) & 8'hff;
+			// on first byte, TPM signals no more waits states will be sent
+			if (i == w_size - 1) begin
+				spi_transfer(8'h01, temp);
+			end
+			else begin
+				spi_transfer(8'h00, temp);
+			end
+			#(SPI_CLK_PERIOD_NS);
+		end
+		
+		if0_ss_in = (SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1;
+		#(SPI_CLK_PERIOD_NS);
+	endtask
+	
 	// helper task to simulate TPM GetRandom command issuing
 	task tpm_get_random_cmd(integer w_size);
-		integer i, j;
-		reg [7:0] temp;
-		reg [31:0] tpm_write_reg;
+		integer i, n;
+		reg [32*8:0] temp_data;
+		reg [23:0] reg_addr;
 		reg [12*8:0] tpm_cmd;
+		
+		reg_addr = 24'hd40024;	// FIFO register address
 	
 		// TPM GetRandom command
 		tpm_cmd = {
@@ -88,45 +193,22 @@ module TpmGetRandomTopLevelModule_test();
 			8'h00, 8'h08                // Bytes requested
 		};
 		
-		// TPM write to FIFO register
-		temp[6:0] = (w_size & 7'h7f) - 1;
-		temp[7] = 1'b0;
-		tpm_write_reg = {
-			temp,                // write 'w_size' bytes
-			8'hd4, 8'h00, 8'h24  // FIFO register address
-		};
-		
 		for (i = 12 / w_size - 1; i >= 0; i--) // most significat byte first
 		begin
-			if0_ss_in = (SS_ACTIVE_LOW == 0) ? 1'b1 : 1'b0;
-			#(SPI_CLK_PERIOD_NS);
-			
-			for (j = 3; j >= 0; j--) // most significat byte first
-			begin
-				temp = (tpm_write_reg >> (8 * j)) & 8'hff;
-				spi_transfer(8'h00, temp);
-				#(SPI_CLK_PERIOD_NS);
-			end
-			
-			for (j = w_size - 1; j >= 0; j--)
-			begin
-				temp = (tpm_cmd >> (8 * (i * w_size + j))) & 8'hff;
-				spi_transfer(8'h00, temp);
-				#(SPI_CLK_PERIOD_NS);
-			end
-			
-			if0_ss_in = (SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1;
-			
-			#(SPI_CLK_PERIOD_NS);
+			n = $urandom % 3;
+			temp_data = (tpm_cmd >> (8 * (i * w_size)));
+			tpm_write_reg(reg_addr, w_size, n, temp_data);
 		end
 	endtask
 	
 	// helper task to simulate TPM GetRandom response querying
 	task tpm_get_random_resp(integer r_size);
-		integer i, j;
-		reg [7:0] temp;
-		reg [31:0] tpm_read_reg;
+		integer i, n;
+		reg [32*8:0] temp_data;
+		reg [23:0] reg_addr;
 		reg [20*8:0] tpm_resp;
+		
+		reg_addr = 24'hd40024;	// FIFO register address
 	
 		// TPM GetRandom response
 		tpm_resp = {
@@ -138,36 +220,11 @@ module TpmGetRandomTopLevelModule_test();
 			8'h01, 8'ha7, 8'hcc, 8'h09  // Random bytes
 		};
 		
-		// TPM read FIFO register
-		temp[6:0] = (r_size & 7'h7f) - 1;
-		temp[7] = 1'b1;
-		tpm_read_reg = {
-			temp,                // Command: read 'r_size' bytes
-			8'hd4, 8'h00, 8'h24  // FIFO register address
-		};
-		
 		for (i = 20 / r_size - 1; i >= 0; i--) // most significat byte first
 		begin
-			if0_ss_in = (SS_ACTIVE_LOW == 0) ? 1'b1 : 1'b0;
-			#(SPI_CLK_PERIOD_NS);
-			
-			for (j = 3; j >= 0; j--) // most significat byte first
-			begin
-				temp = (tpm_read_reg >> (8 * j)) & 8'hff;
-				spi_transfer(8'h00, temp);
-				#(SPI_CLK_PERIOD_NS);
-			end
-			
-			for (j = r_size - 1; j >= 0; j--)
-			begin
-				temp = (tpm_resp >> (8 * (i * r_size + j))) & 8'hff;
-				spi_transfer(temp, 8'h00);
-				#(SPI_CLK_PERIOD_NS);
-			end
-			
-			if0_ss_in = (SS_ACTIVE_LOW == 0) ? 1'b0 : 1'b1;
-			
-			#(SPI_CLK_PERIOD_NS);
+			n = $urandom % 3;
+			temp_data = (tpm_resp >> (8 * (i * r_size)));
+			tpm_read_reg(reg_addr, r_size, n, temp_data);
 		end
 	endtask
 	
