@@ -103,23 +103,42 @@ V tejto časti predstavíme o niečo komplexnejší útok na komunikáciu medzi 
 \subsection{TPM SPI protokol}
 TPM štandard presne definuje spôsob komunikácie s TPM v prípade, že je použitá zbernica SPI \cite{tpmTis}. V tejto časti uvedieme niektoré detaily zo štandardu, relevantné pre porozumenie princípu útoku na generovanie náhodných čísel. TPM je v role slave zariadenia a komunikáciu riadi druhá strana. Počas SPI komunikácie je počet prenesených bitov (a teda hodinových taktov na SCLK linke) je vždy zarovnaný na celý bajtov. Bity v rámci bajtu sú vždy prenášané od najvýznamnejšieho bitu a rovnako v prípade viac-bajtových hodnôt sú bajty prenášané od najvýznamnejšieho. Štandard zároveň požaduje podporu pre SCLK mód 0 na TPM zariadení.
 
-Na vyššej úrovni komunikácia s TPM prebieha čítaním a zápisom do špecifických TPM registrov. Čítanie a zápis do registra potom vyzerá nasledovne: Najvýznamnejší bit prvého bajtu (posielaný mastrom na MOSI linke) určuje či ide o operáciu čítania (1) alebo zápisu (0). Nasledovných sedem bitov predstavuje počet bajtov, ktoré chceme zapísať/prečítať mínus jeden. Napríklad 0x80 znamená, že chceme prečítať jeden bajt. Nasledujú tri bajty, ktoré určujú adresu registra. V prípade, že ide o operáciu zápisu po adrese nasledujú jednotlivé dáta, ktoré sa do registra majú uložiť. V prípade operácie čítania je potrebné ďalej taktovať na SCLK linke dostatočný počet bajtov, aby malo TPM priestor odpovedať. V princípe to znamená \uv{poslať} príslušný počet bajtov, na ktorých hodnote nezáleží a podstatné sú iba dáta vysielané z TPM po MISO linke. Na obrázku \ref{obr:tpmRW} je znázornené čítanie a zápis do TPM registra.
+Na vyššej úrovni komunikácia s TPM prebieha čítaním a zápisom do špecifických TPM registrov. Čítanie a zápis do registra potom vyzerá nasledovne: Najvýznamnejší bit prvého bajtu (posielaný mastrom na MOSI linke) určuje či ide o operáciu čítania (1) alebo zápisu (0). Nasledovných sedem bitov predstavuje počet bajtov, ktoré chceme zapísať/prečítať mínus jeden. Napríklad 0x80 znamená, že chceme prečítať jeden bajt. Nasledujú tri bajty, ktoré určujú adresu registra.
+
+V prípade, že ide o operáciu zápisu po adrese nasledujú jednotlivé dáta, ktoré sa do registra majú uložiť. V prípade operácie čítania je potrebné ďalej taktovať na SCLK linke dostatočný počet bajtov, aby malo TPM priestor odpovedať. V princípe to znamená \uv{poslať} príslušný počet bajtov, na ktorých hodnote nezáleží a podstatné sú iba dáta vysielané z TPM po MISO linke.
+
+Počas posledného bitu (taktu na SCLK linke) adresy registra musí TPM za normálnych okolností transakciu potvrdiť, tým, že dvihne MISO linku na úroveň logickej 1 (efektívne pošle bajt s hodnotou 0x01), tzv. acknowledge (ack). Pokiaľ tak neurobí, uplatní tzv. wait-state podmienku, čím signalizuje, že TPM ešte nie je pripravené posielať/prijímať dáta. Pokiaľ TPM uplatní wait-state podmienku, musí master taktovať ďalšie bajty na SCLK linke, kým TPM nepošle ack. S nasledujúcim bajtom možno začať čítať/zapisovať dáta z/do TPM registra ako v predošlom prípade. V prípade, že už bol úspešne prečítaný/zapísaný aspoň jeden bajt transakcie, TPM nesmie uplatniť ďalšie wait-state podmienky do ukončenia transakcie. Na obrázku \ref{obr:tpmRW} je znázornená komunikácia pri čítaní a zápisu do TPM registra.
 
 \begin{figure}
     \centering
-    \subfloat[Prečítanie jedného bajtu (0x90) z registra 0xD40018.]{\includegraphics[width=1\textwidth]{images/signals/tpmRead.pdf}}
+    \subfloat[Prečítanie dvoch bajtov (0x8001) z registra 0xD40024.]{\includegraphics[width=1\textwidth]{images/signals/tpmRead.pdf}}
     \vfill
-    \subfloat[Zápis dvoch bajtov (0x8001) do registra 0xD40024.]{\includegraphics[width=1\textwidth]{images/signals/tpmWrite.pdf}}
+    \subfloat[Prečítanie dvoch bajtov (0x8001) z registra 0xD40024 s wait-state podmienkou.]{\includegraphics[width=1\textwidth]{images/signals/tpmReadWait.pdf}}
+    \vfill
+    \subfloat[Zápis jedného bajtu (0xA0) do registra 0xD40018.]{\includegraphics[width=1\textwidth]{images/signals/tpmWrite.pdf}}
+    \vfill
+    \subfloat[Zápis jedného bajtu (0xA0) do registra 0xD40018 s dvojnásobnou wait-state podmienkou.]{\includegraphics[width=1\textwidth]{images/signals/tpmWriteWait.pdf}}
     \caption[Komunikácia s TPM]{Komunikácia s TPM.}
     \label{obr:tpmRW}
 \end{figure}
 
+\subsection{TPM komunikácia na vyššej úrovni}
 Jednotlivé registre sú adresované tzv. ofsetom od bázovej adresy. Bázová adresa sa na platformách zvykne využívať na zabezpečenie správneho mapovania TPM registrov do pamäte v prípade použitia memory mapped I/O. V našom jednoduchom prípade na bázovej adrese nezáleží, podstatné je aby počas celej komunikácie bola konštantná. Pre účely tejto práce spomenieme dva podstatné registre.
 
-\textbf{TPM STATUS} register
+\textbf{TPM STATUS} register obsahuje statusové aj kontrolné bity, ktoré majú rozličný význam. Niektoré z nich spomenieme v nasledujúcej časti, pri vysvetlení komunikácie s TPM na úrovni príkazov a odpovedí. Pre kompletný zoznam bitov STATUS registra odkazujeme čitateľa na príslušný štandard, ktorý je voľne dostupný \cite{tpmTis}. Hodnoty statusových bitov možno získať prečítaním STATUS registra. Pre nastavenie kontrolných bitov je potrebné zapísať do statusového registra hodnotu, ktorá ma nastavený práve jeden bit (príslušný bit, ktorý chceme nastaviť). Nie je možné nastaviť viacero kontrolných bitov naraz.
 
-\textbf{TPM FIFO} register
+\textbf{TPM FIFO} register je základný register na vykonávanie TPM príkazov a získavanie odpovedí. Dátové bajty príkazu pre TPM sa posielajú zápisom do tohto registra. Po vykonaní príkazu možno zase z FIFO registra prečítať dáta TPM odpovede.
 
-\subsection{MITM logika pre útok na komunikáciu s TPM}
+Interakciu zadávania príkazov TPM možno opísať stavovým automatom. Po restovaní je TPM v stave \texttt{IDLE}. Pre vykonanie príkazu je najskôr potrebné nastaviť kontrolný bit \texttt{cmdReady} v STATUS registri. Tým prejde TPM do stavu \texttt{READY}. Následne možno postupne zapísať dáta príkazu do FIFO registra. Zápisom prvého bajtu do FIFO registra TPM prejde do stavu \texttt{COMMAND RECEPTION}. Po odoslaní celého príkazu do FIFO registra je potrebné počkať, kým bude v STATUS registri nastavený bit \texttt{stsValid} a zároveň vynulovaný bit \texttt{expect}. Tento status signalizuje, že TPM neočakáva ďalšie príkazové dáta a možno príkaz vykonať. To možno urobiť nastavením kontrolného bitu \texttt{tpmGo} v STATUS registri. Po tomto zápise sa spustí vykonávanie príkazu a TPM prejde do stavu \texttt{COMMAND EXECUTION}.
+
+Po vykonaní príkazu TPM prejde do stavu \texttt{COMMAND COMPLETION}. To možno overiť prečítaním STATUS registra. Je potrebné, aby boli súčasne nastavené bity \texttt{stsValid} a \texttt{dataAvail}, čo signalizuje, že FIFO register obsahuje pripravené dáta odpovede. Následne možno prečítať dáta z FIFO registra. Po prečítaní dát je potrebné opäť nastaviť  bit \texttt{cmdReady} v STATUS registri, čím TPM prejde do stavu \texttt{IDLE}. V stavoch \texttt{COMMAND RECEPTION}, \texttt{COMMAND EXECUTION}, \texttt{CMD COMPLETION} možno kedykoľvek príkaz abortovať nastavením bitu \texttt{cmdReady}, čo spôsobí, že TPM prejde do stavu \texttt{IDLE}. Prechodový diagram TPM stavov je na obrázku \ref{obr:tpmStateTransition}.
+
+\begin{figure}
+    \centerline{\includegraphics[width=1\textwidth]{images/misc/tpmStateTransition.pdf}}
+    \caption[Prechodový diagram stavov TPM]{Prechodový diagram stavov TPM.}
+    \label{obr:tpmStateTransition}
+\end{figure}
+
+\subsection{MITM logika pre útok na náhodný generátor TPM}
 
 \subsection{Fyzická realizácia útoku}

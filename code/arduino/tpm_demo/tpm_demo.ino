@@ -35,7 +35,7 @@ bool tpmReadReg(uint32_t reg, uint8_t* buffer, uint8_t len)
     SPI.transfer((reg >> 8) & 0xFF);
     uint8_t wait_state = SPI.transfer(reg & 0xFF);
 
-    // wait till TPM inserts wait states
+    // wait while TPM inserts wait states
     size_t wait = 0;
     while(wait_state & 0x01 == 0x00)
     {
@@ -69,27 +69,26 @@ bool tpmWriteReg(uint32_t reg, uint8_t* buffer, uint8_t len)
     SPI.transfer(0x00 | (len - 1) & 0x7F);
     SPI.transfer((reg >> 16) & 0xFF);
     SPI.transfer((reg >> 8) & 0xFF);
-    SPI.transfer(reg & 0xFF);
+    uint8_t wait_state = SPI.transfer(reg & 0xFF);
 
-    // try sending first byte till TPM inserts wait states
+    // wait while TPM inserts wait states
     size_t wait = 0;
-    while(1)
+    while(wait_state & 0x01 == 0x00)
     {
-        uint8_t wait_state = SPI.transfer(buffer[0]);
-        if (wait_state != 0x00) break;
+        wait_state = SPI.transfer(0x00);
         ++wait;
         if (wait == WAIT_TIMEOUT) {
-            Serial.println("TPM write register: waiting for wait state timed out.");
+            Serial.println("TPM read register: waiting for wait state timed out.");
             Serial.printf("\tMISO value: 0x%02X\r\n", wait_state);
             return false;
         }
         delayMicroseconds(1);
     }
 
-    // write other values
-    for (size_t i = 1; i < len; ++i)
+    // write values
+    for (size_t i = 0; i < len; ++i)
     {
-        SPI.transfer(buffer[i]);
+        wait_state = SPI.transfer(buffer[i]);
     }
 
     digitalWrite(CS_PIN, HIGH);
@@ -107,6 +106,12 @@ void printHexData(uint8_t* buffer, size_t len)
 
 bool tpmSendCommand(uint8_t* cmd_buffer, size_t cmd_len, uint8_t* resp_buffer, size_t resp_len)
 {
+uint32_t header_size = (cmd_buffer[2] << 24) | (cmd_buffer[3] << 16) | (cmd_buffer[4] << 8) | cmd_buffer[5];
+if (cmd_len != header_size) {
+    Serial.printf("Command length mismatch: cmd_len=%u, header_size=%u\n", cmd_len, header_size);
+    return false;
+}
+
     uint8_t status;
 
     // wait for command ready
@@ -130,27 +135,19 @@ bool tpmSendCommand(uint8_t* cmd_buffer, size_t cmd_len, uint8_t* resp_buffer, s
         if(!tpmWriteReg(TPM_FIFO, cmd_buffer + i, 1)) return false;
     }
 
-    
-    if (!tpmReadReg(TPM_STATUS, &status, 1)) return false;
-    // wait for status valid
+    // wait till expect bit is clear
     wait = 0;
     while(1)
     {
         if (!tpmReadReg(TPM_STATUS, &status, 1)) return false;
-        if (IS_STATUS_VALID(status)) break;
+        if (IS_STATUS_VALID(status) && !IS_STATUS_EXPECT(status)) break;
         ++wait;
         if (wait == WAIT_TIMEOUT) {
-            Serial.println("Waiting for status valid timed out.");
+            Serial.println("Waiting for expect bit to be clear timed out.");
             Serial.printf("\tTPM_STATUS value: 0x%02X\r\n", status);
             return false;
         }
         delay(1);
-    }
-    // assert expect bit is clear
-    if (IS_STATUS_EXPECT(status)) {
-        Serial.println("Fatal error while sending command: expect bit is not clear.");
-        Serial.printf("\tTPM_STATUS value: 0x%02X\r\n", status);
-        return false;
     }
 
     // set go bit

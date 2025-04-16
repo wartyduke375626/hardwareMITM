@@ -8,7 +8,7 @@
 // general configuration
 `define TEST_FREQ_HZ 32_000_000
 `define DEBOUNCE_LEN_US 1
-`define NUM_MITM_MODES 2
+`define NUM_MITM_MODES 4
 `define NUM_DATA_BITS 8
 
 // bus specific configuration
@@ -146,29 +146,34 @@ module TpmGetRandomTopLevelModule_test();
 		for (i = 3; i >= 0; i--) // most significat byte first
 		begin
 			temp = (tpm_cmd >> (8 * i)) & 8'hff;
-			spi_transfer(8'h00, temp);
-			#(SPI_CLK_PERIOD_NS);
-		end
-		
-		// attempt sending first data byte but TPM asserts wait states
-		temp = (w_data >> (8 * (w_size - 1))) & 8'hff;
-		for (i = 0; i < num_waits; i++)
-		begin
-			spi_transfer(8'h00, temp);
-			#(SPI_CLK_PERIOD_NS);
-		end
-		
-		// now send the data bytes correctly
-		for (i = w_size - 1; i >= 0; i--) // most significat byte first
-		begin
-			temp = (w_data >> (8 * i)) & 8'hff;
-			// on first byte, TPM signals no more waits states will be sent
-			if (i == w_size - 1) begin
+			// if no waits states shall be sent,
+			// slave asserts ready by sending 0x01 on MISO line during last address byte
+			if (i == 0 && num_waits == 0) begin
 				spi_transfer(8'h01, temp);
 			end
 			else begin
 				spi_transfer(8'h00, temp);
 			end
+			#(SPI_CLK_PERIOD_NS);
+		end
+		
+		// wait states
+		for (i = 0; i < num_waits; i++)
+		begin
+			if (i == num_waits - 1) begin
+				spi_transfer(8'h01, 8'h00);
+			end
+			else begin
+				spi_transfer(8'h00, 8'h00);
+			end
+			#(SPI_CLK_PERIOD_NS);
+		end
+		
+		// write data bytes
+		for (i = w_size - 1; i >= 0; i--) // most significat byte first
+		begin
+			temp = (w_data >> (8 * i)) & 8'hff;
+			spi_transfer(8'h00, temp);
 			#(SPI_CLK_PERIOD_NS);
 		end
 		
