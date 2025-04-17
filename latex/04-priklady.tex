@@ -3,7 +3,7 @@
 
 V tejto kapitole uvedieme dva príklady použitia FPGA MITM obvodu, ktorého implementáciu sme opísali v kapitole \ref{kap:implementacia}. Prvým bude jednoduchý príklad zasahovania do komunikácie na UART zbernici, na ktorom demonštrujeme detailnejšie celý proces od navrhnutie MITM logiky po zapojenie a spustenie obvodu. Druhým príkladom je útok na funkciu náhodného generátora externého TPM modulu pripojeného k mikrokontroléru ESP8266.
 
-\section{Príklad 1 -- zasahovanie do UART komunikácie}
+\section{Príklad 1 -- zasahovanie do UART komunikácie} \label{sek:example1}
 Ako prvý uvedieme jednoduchý príklad MITM obvodu, ktorý bude zasahovať do UART komunikácie. Cieľom tohoto príkladu je ukázať postup pri implementácii hardvérového MITM útoku s využitím nášho obvodu. FPGA obvodu bude možné prepínať medzi štyrmi režimami, pričom jeden z nich bude transparentný -- žiadne zásahy do komunikácie. V ostatných troch režimoch implementujeme tri rôzne logiky, ktoré budú rozličnými spôsobmi zasahovať do komunikácie. Cieľom je demonštrovať viaceré možnosti, ktoré naša implementácia poskytuje. Najskôr ukážeme detailný návrh MITM logiky, následne konfiguráciu a syntézu FPGA obvodu. Na záver ukážeme fyzické zapojenie hardvéru a spustenie útoku.
 
 \subsection{Návrh MITM logiky} \label{subsek:uartMitmLogic}
@@ -62,11 +62,11 @@ V rámci MITM logiky definujeme okrem transparentného režimu, tri ukážkové 
         \hlineB{4}
         SYS\_FREQ & 16 \\
         \hline
-        DEBOUNCE\_LEN\_US & 50\,000 (predvolené nastavenie) \\
+        DEBOUNCE\_LEN\_US & 50\,000 \\
         \hline
         NUM\_MITM\_MODES & 4 \\
         \hline
-        NUM\_DATA\_BITS & v8 \\
+        NUM\_DATA\_BITS & 8 \\
         \hline
         UART\_BAUD\_RATE & 115\,200 \\
         \hlineB{4}
@@ -98,14 +98,14 @@ Hardvér zapojíme podľa schémy na obrázku \ref{obr:schemeUartMitm}.
 Funkcionalitu môžeme následne demonštrovať na jednoduchom scenári: USB konce prevodníkov pripojíme k všeobecnému počítaču. Zároveň zapojíme cez USB aj samotnú dosku icestick kvôli napájaniu (Dátová komunikácia medzi PC a doskou icestick už nie je potrebná, nakoľko FPGA konfiguráciu sme na dosku nahrali v predošlom kroku.) Následne môžeme otvoriť dva virtuálne sériové terminály pripojené k USB prevodníkom. V transparentnom režime MITM logiky sa všetok vstup do prvého terminálu zobrazí na druhom (a naopak). Prepínaním medzi režimami MITM logiky pomocou príslušného tlačidla možno vidieť realizáciu zásahov do komunikácie pri rôznych režimoch, ktoré sme opísali v časti \ref{subsek:uartMitmLogic}.
 
 \section{Príklad 2 -- útok na komunikáciu s TPM} \label{sek:example2}
-V tejto časti predstavíme o niečo komplexnejší útok na komunikáciu medzi mikrokontrolérom a externým TPM modulom. Na mikrokontroléri implementujeme program, ktorý bude periodicky získavať pomocou náhodne generované čísla pomocou TPM. Následne medzi TPM a mikrokontrolér zapojíme náš FPGA obvod, na ktorom implementujeme MITM logiku, ktorá bude modifikovať náhodne vygenerované bity, napríklad za konštantné. Konkrétne použijeme mikrokontrolér ESP8266, ktorý bude cez FPGA pripojený k TPM modulu SLB9670.
+V tejto časti predstavíme o niečo komplexnejší útok na komunikáciu medzi mikrokontrolérom a externým TPM modulom. Na mikrokontroléri implementujeme program, ktorý bude periodicky získavať náhodne generované dáta pomocou TPM. Následne medzi TPM a mikrokontrolér zapojíme náš FPGA obvod, na ktorom implementujeme MITM logiku, ktorá bude modifikovať náhodne vygenerované bajty, napríklad za konštantné. Konkrétne použijeme mikrokontrolér ESP8266, ktorý bude cez FPGA pripojený k TPM modulu SLB9670.
 
-\subsection{TPM SPI protokol}
-TPM štandard presne definuje spôsob komunikácie s TPM v prípade, že je použitá zbernica SPI \cite{tpmTis}. V tejto časti uvedieme niektoré detaily zo štandardu, relevantné pre porozumenie princípu útoku na generovanie náhodných čísel. TPM je v role slave zariadenia a komunikáciu riadi druhá strana. Počas SPI komunikácie je počet prenesených bitov (a teda hodinových taktov na SCLK linke) je vždy zarovnaný na celý bajtov. Bity v rámci bajtu sú vždy prenášané od najvýznamnejšieho bitu a rovnako v prípade viac-bajtových hodnôt sú bajty prenášané od najvýznamnejšieho. Štandard zároveň požaduje podporu pre SCLK mód 0 na TPM zariadení.
+\subsection{TPM SPI protokol} \label{subsek:tpmSpi}
+TPM štandard presne definuje spôsob komunikácie s TPM v prípade, že je použitá zbernica SPI \cite{tpmTis}. V tejto časti uvedieme niektoré detaily zo štandardu, relevantné pre porozumenie princípu útoku na generovanie náhodných čísel. TPM je v role slave zariadenia a komunikáciu riadi druhá strana. Počas SPI komunikácie je počet prenesených bitov (a teda hodinových taktov na SCLK linke) vždy zarovnaný na celý bajt. Bity v rámci bajtu sú vždy prenášané od najvýznamnejšieho bitu a rovnako v prípade viac-bajtových hodnôt sú bajty prenášané od najvýznamnejšieho. Štandard zároveň vynucuje použitie SCLK módu 0.
 
 Na vyššej úrovni komunikácia s TPM prebieha čítaním a zápisom do špecifických TPM registrov. Čítanie a zápis do registra potom vyzerá nasledovne: Najvýznamnejší bit prvého bajtu (posielaný mastrom na MOSI linke) určuje či ide o operáciu čítania (1) alebo zápisu (0). Nasledovných sedem bitov predstavuje počet bajtov, ktoré chceme zapísať/prečítať mínus jeden. Napríklad 0x80 znamená, že chceme prečítať jeden bajt. Nasledujú tri bajty, ktoré určujú adresu registra.
 
-V prípade, že ide o operáciu zápisu po adrese nasledujú jednotlivé dáta, ktoré sa do registra majú uložiť. V prípade operácie čítania je potrebné ďalej taktovať na SCLK linke dostatočný počet bajtov, aby malo TPM priestor odpovedať. V princípe to znamená \uv{poslať} príslušný počet bajtov, na ktorých hodnote nezáleží a podstatné sú iba dáta vysielané z TPM po MISO linke.
+V prípade, že ide o operáciu zápisu po adrese nasledujú jednotlivé dáta, ktoré sa do registra majú zapísať. V prípade operácie čítania je potrebné ďalej taktovať na SCLK linke dostatočný počet bajtov, aby malo TPM priestor odpovedať. V princípe to znamená \uv{poslať} príslušný počet bajtov, na ktorých hodnote nezáleží a podstatné sú iba dáta vysielané z TPM po MISO linke.
 
 Počas posledného bitu (taktu na SCLK linke) adresy registra musí TPM za normálnych okolností transakciu potvrdiť, tým, že dvihne MISO linku na úroveň logickej 1 (efektívne pošle bajt s hodnotou 0x01), tzv. acknowledge (ack). Pokiaľ tak neurobí, uplatní tzv. wait-state podmienku, čím signalizuje, že TPM ešte nie je pripravené posielať/prijímať dáta. Pokiaľ TPM uplatní wait-state podmienku, musí master taktovať ďalšie bajty na SCLK linke, kým TPM nepošle ack. S nasledujúcim bajtom možno začať čítať/zapisovať dáta z/do TPM registra ako v predošlom prípade. V prípade, že už bol úspešne prečítaný/zapísaný aspoň jeden bajt transakcie, TPM nesmie uplatniť ďalšie wait-state podmienky do ukončenia transakcie. Na obrázku \ref{obr:tpmRW} je znázornená komunikácia pri čítaní a zápisu do TPM registra.
 
@@ -140,5 +140,102 @@ Po vykonaní príkazu TPM prejde do stavu \texttt{COMMAND COMPLETION}. To možno
 \end{figure}
 
 \subsection{MITM logika pre útok na náhodný generátor TPM}
+Podobne ako v príklade 1 (pozri časť \ref{sek:example1}), implementujeme tentokrát mierne zložitejšiu MITM logiku, ktorá bude útok realizovať. Princíp logiky bude spočívať v tom, že budeme detegovať čítanie z FIFO registra. Zo samotnej TPM odpovede nemožno jednoznačne určiť s akým príkazom je odpoveď spätá. Pre jednoduchosť budeme predpokladať, že čítané dáta sú odpoveďou na príkaz \texttt{TPM2\_GetRandom} -- generovanie náhodných čísel. Pre demonštráciu je to postačujúce, nakoľko testovací program pre mikrokontrolér, na ktorom MITM útok demonštrujeme bude po inicializácii TPM vykonávať už len tento jeden príkaz. Počas inicializácie je nutné vykonať aj ďalšie príkazy (\texttt{\_TPM\_Init} a \texttt{TPM2\_Startup}). Pre tento účel budeme mať jeden špeciálny pasívny režim MITM logiky, v ktorom do komunikácie nezasahujeme.
 
-\subsection{Fyzická realizácia útoku}
+Stavový diagram MITM logiky potom bude vyzerať nasledovne: Začíname v stave \texttt{WAIT\_TPM\_RW}, kedy čakáme na inštrukciu čítania/zápisu z/do TPM registra. Zatiaľ zbernicu ponecháme v transparentnom režime (komunikácia sa preposiela bez zmeny). Po odpočutí 4 bajtoch inštrukcie (kód a adresa registra) prejdeme do stavu \texttt{MITM\_FORK}. Prípadne, pokiaľ TPM uplatnilo wait-state podmienku, prejdeme najskôr do stavu \texttt{TPM\_WAIT\_STATE}, kde počkáme, kým TPM neodpovie ack a následne prejdeme do stavu \texttt{MITM\_FORK}. V stave \texttt{MITM\_FORK} urobíme hlavné rozhodnutie: Na základe odpočutej inštrukcie prejdeme buď do stavu \texttt{MITM\_ATTACK} -- inštrukcia je čítanie z FIFO registra a MITM logika nie je v pasívnom režime, alebo do stavu \texttt{MITM\_IGNORE} v opačnom prípade. Pokiaľ je MITM V stave \texttt{MITM\_IGNORE} nezasahujeme do komunikácie a počkáme až TPM transakcia skončí. Následne sa vrátime do stavu \texttt{WAIT\_TPM\_RW}. Ako ukážku uvádzame v úryvku \ref{snip:tpmRwState} kód realizujúci logiku stavu \texttt{WAIT\_TPM\_RW}. Kompletný zdrojový kód MITM logiky sa nachádza v elektronickej prílohe priloženej k práci.
+
+\begin{lstlisting}[float,language=Verilog,caption={Logika stavu \texttt{WAIT\_TPM\_RW}.},label=snip:tpmRwState]
+STATE_WAIT_TPM_RW: begin
+    // odpočutie dát na master strane
+    if (if0_recv_new_data == 1'b1) begin
+        tpm_rw_cmd <= {tpm_rw_cmd[23:0], real_if0_recv_data};
+        if0_tpm_rw_ctr <= if0_tpm_rw_ctr + 1;
+    end
+    // odpočutie dát na slave strane
+    if (if1_recv_new_data == 1'b1) begin
+        tpm_wait_state <= real_if1_recv_data;
+        if1_tpm_rw_ctr <= if1_tpm_rw_ctr + 1;
+    end
+    
+    // ak sme videli 4 bajty (hlavička transakcie), spracujeme ich
+    if (if0_tpm_rw_ctr == 3'd4 && if1_tpm_rw_ctr == 3'd4) begin
+        if0_tpm_rw_ctr <= 3'd0;
+        if1_tpm_rw_ctr <= 3'd0;
+        // TPM uplatnilo wait-state podmienku
+        // prejdeme do príslušného stavu
+        if (tpm_wait_state == 8'h00) begin
+            state <= STATE_TPM_WAIT_STATE;
+        end
+        // v opačnom prípade extrahujeme počet bajtov, ktoré sa budú
+        // čítať/zapisovať a prejdeme do ďalšieho stavu
+        else begin
+            tpm_rw_size <= {1'b0, tpm_rw_cmd[30:24]} + 1;
+            state <= STATE_MITM_FORK;
+        end
+    end
+end
+\end{lstlisting}
+
+V stave \texttt{MITM\_ATTACK} budeme postupne počítať bajty TPM odpovede na príkaz \texttt{TPM2\_GetRandom}. Prvých desať bajtov budeme pre jednoduchosť ignorovať, nakoľko obsahujú hlavičku s pre nás nepodstatnými informáciami. Bajty 11 a 12 predstavujú počet náhodne vygenerovaných bajtov a túto hodnotu si uložíme. Nasledujú samotné náhodné bajty, ktoré budeme modifikovať na základe režimu MITM logiky. Potom, čo je z FIFO registra prečítaná celá odpoveď, vrátime sa do počiatočného stavu \texttt{WAIT\_TPM\_RW}.
+
+Mikrokontrolér môže TPM FIFO register čítať postupne po menších častiach (min. jeden bajt na transakciu, pozri časť \ref{subsek:tpmSpi}). Uprostred spracovania bajtov čítaných z TPM FIFO registra môže preto dôsť k ukončeniu transakcie. Tento stav vieme detegovať tak, že budeme počítať prečítané bajty. Počet bajtov, ktoré sa majú prečítať zistíme z argumentu inštrukcie čítania. Ak sú všetky bajty prečítané a odpoveď ešte nie je kompletná prejdeme opäť do stavu \texttt{WAIT\_TPM\_RW}, pričom si zapamätáme počet spracovaných bajtov odpovede, aby sme počas ďalšej transakcie vedeli pokračovať.
+
+Z technických dôvodov budeme potrebovať ešte dva stavy \texttt{FAKE\_SEND\_START} a \texttt{STATE\_FAKE\_SEND\_WAIT}, ktoré budú slúžiť na spustenie vysielania falošných dáta a následné čakanie na ich odvysielanie. Posledným stavom je \texttt{RESET}, ktorý slúži na obnovenie počiatočného stavu v prípade globálneho resetu FPGA obvodu, rovnako ako v príklade 1 (pozri časť \ref{sek:example1}). Prechodový diagram stavov MITM logiky pre útok na náhodný generátor TPM je na obrázku \ref{obr:tpmMitmStateTransition}.
+
+\begin{figure}
+    \centerline{\includegraphics[width=1\textwidth]{images/misc/tpmMitmStateTransition.pdf}}
+    \caption[Prechodový diagram stavov MITM logiky pre útok na TPM]{Prechodový diagram stavov MITM logiky pre útok na TPM. Z každého stavu vedie prechod na globálny reset do \texttt{RESET} stavu. Kvôli prehľadnosti sú tieto prechody vynechané.}
+    \label{obr:tpmMitmStateTransition}
+\end{figure}
+
+\subsection{Demonštrácia útoku}
+Pre demonštráciu útoku sme naprogramovali jednoduchý program pre mikrokontrolér ESP8266 na doske NodeMCU, ktorý komunikuje s TPM modulom SLB9670. Program po inicializovaní TPM, periodicky posiela príkaz na generovanie náhodných bajtov a následne vždy prečíta odpoveď, ktorú vypíše cez UART pripojený napríklad k virtuálnemu terminálu počítača. Program sme implementovali v prostredí Arduino IDE a zdrojový kód sa nachádza v elektronickej prílohe priloženej k práci.
+
+Opäť je potrebné správne nakonfigurovať parametre FPGA obvodu, ktoré závisia aj od nastavení SPI zbernice použitej na komunikáciu. Parametre, ktoré sme zvolili pre demonštráciu útoku sú v tabuľke \ref{tab:tpmConfig}. Narozdiel od predošlého príkladu (časť \ref{sek:example1}), v tomto príklade použijeme dosku iCE40-HX8K, pričom fyzické mapovanie vstupov a výstupov ponecháme predvolené. Syntézu Verilog kódu v tomto prípade spustíme príkazom \texttt{make ice40hx8k-spi} a výsledný súbor \texttt{ice40hx8k-spi.bin} nahráme na FPGA dosku pomocou programu iceprog, rovnako ako v prvom príklade. Pre demonštráciu útoku sme použili nižšie uvedený hardvér, ktorý sme zapojili podľa schémy na obrázku \ref{obr:schemeTpmMitm}.
+\begin{itemize}
+    \item FPGA vývojová doska iCE40-HX8K Breakout Board
+    \item vývojová doska NodeMCU ESP8266
+    \item TPM module SLB9670
+    \item kontaktné bez-spájkové pole
+    \item dve spínacie tlačidlá
+    \item prepojovacie kábliky
+\end{itemize}
+
+\begin{table}
+    \caption[Konfigurácia parametrov pre útok na TPM]{Konfigurácia parametrov pre útok na TPM.}
+    \label{tab:tpmConfig}
+    \begin{center}
+    \begin{tabular}{V{4}c|cV{4}}
+        \hlineB{4}
+        Parameter & Hodnota \\
+        \hlineB{4}
+        SYS\_FREQ & 60 \\
+        \hline
+        DEBOUNCE\_LEN\_US & 50\,000 \\
+        \hline
+        NUM\_MITM\_MODES & 4 \\
+        \hline
+        NUM\_DATA\_BITS & 8 \\
+        \hline
+        SPI\_FREQ\_HZ & 1\,000\,000 \\
+        \hline
+        SPI\_SS\_ACTIVE\_LOW & 1 \\
+        \hline
+        SPI\_LSB\_FIRST & 0 \\
+        \hlineB{4}
+    \end{tabular}
+    \end{center}
+\end{table}
+
+\begin{figure}
+    \centerline{\includegraphics[width=1\textwidth]{images/schematics/schemeTpmMitm.png}}
+    \caption[Schéma zapojenia hardvéru pre útok na TPM]{Schéma zapojenia hardvéru pre útok na TPM.}
+    \label{obr:schemeTpmMitm}
+\end{figure}
+
+Po zapojení hardvéru a spustení možno pozorovať, že program z TPM korektne získava náhodne generované bajty -- MITM logika FPGA je v pasívnom režime. Po stlačení tlačidla mode select možno pozorovať, že prečítané \uv{náhodné} bajty, ktoré program na mikrokontroléri vypisuje nemajú vlastnosti náhodne generovaných dát. V závislosti od nastaveného režimu MITM logiky sú napríklad konštantné, alebo sú postupne inkrementované o 1.
+
+\subsection{Technické nedostatky}
+Pri realizácii tohoto útoku sme zároveň pozorovali občasné zlyhanie komunikácie medzi mikrokontrolérom a TPM. Toto zlyhanie bolo s najväčšou pravdepodobnosťou spôsobené nízkou kvalitou vodivého prepojenia (pomocou káblikov) medzi komponentami. Najproblematickejším spojením bola linka SCLK, ktorá prenáša hodinový signál. Pri vyšších frekvenciách (rádovo viac ako 10\,MHz) SPI zbernicene, sme pozorovali mierne odlišnosti medzi SCLK signálom vysielaným mikrokontrolérom a signálom, ktoré generovalo FPGA. Tieto výchylky mohli spôsobiť nestabilitu komunikácie. 
+
+Pre stabilnejšiu komunikáciu by bolo potrebné použiť kvalitnejšie prepojenie medzi elektronickými súčiastkami, napríklad pomocou vhodnej dosky plošných spojov. Cieľom tohto príkladu bolo iba konceptuálne demonštrovať možnosť použitia nášho FPGA obvodu na realistickejšie útoky. Optimalizácia podobných technických aspektov je preto mimo rozsah tejto práce a považujeme ju za jednu z možností nadviazania na túto prácu.

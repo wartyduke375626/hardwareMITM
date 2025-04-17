@@ -102,32 +102,88 @@ Posledný mechanizmus, ktorý naše rozhranie umožňuje je tzv. keep-alive rež
 Na slave strane je naopak potrebné zabezpečiť, aby sa falošné dáta odvysielali v správnom okamihu (komunikáciu riadi master). Pre tento účel využijeme binárny statusový výstup (\texttt{fake\_ifX\_send\_ready}), ktorý indikuje, či je rozhranie na danej strane pripravené vysielať dáta. Implementácia zbernice môže týmto výstupom signalizovať, že zbernica nie je pripravená odvysielať ďalšie dáta, napríklad z dôvodu, že aktuálne práve vysiela predošlé dáta. Na slave strane bude implementácia zároveň signalizovať, že nie je pripravená odvysielať dáta aj v prípade, že to momentálne konkrétny master-slave protokol neumožňuje napriek tomu, že slave strana aktuálne nie je činná.
 
 \section{Primitíva}
-Pre implementáciu jednotlivých častí obvodu je užitočné postaviť základné primitíva, parametrizovateľné obvody realizujúce jednoduché funkcie. Tento prístup umožní prehľadnejšiu štruktúru kódu a jednoduchšie testovanie a overovanie funkčnosti jednotlivých modulov. V tejto časti stručne opíšeme jednotlivé primitívne obvody, z ktorých budú poskladané zložitejšie moduly.
+Pre implementáciu jednotlivých častí obvodu je užitočné postaviť základné primitíva, parametrizovateľné obvody realizujúce jednoduché funkcie. Tento prístup umožní prehľadnejšiu štruktúru kódu a jednoduchšie testovanie a overovanie funkčnosti jednotlivých modulov. V tejto časti stručne opíšeme jednotlivé primitívne obvody, z ktorých budú poskladané zložitejšie moduly. Pre vybrané primitíva uvedieme aj ukážky implementácie v jazyku Verilog. Kompletný zdrojový kód všetkých modulov sa nachádza v elektronickej prílohe priloženej k práci.
 
 \subsection{Detektor hrán} \label{subsek:edgeDetector}
-Prvé primitívum, ktoré spomenieme je detektor hrán. Detekcia hrán je potrebná najmä pre rozpoznanie začiatku komunikácie, prípadne konkrétnej fázy v komunikačného protokolu, ktorá vždy začína zmenou signálu (hranou) na niektorej zo vstupných liniek v závislosti od zbernice. Ako mechanizmus detekcie hrán použijeme štandardný prístup. Obvod pre detekciu hrán bude vzorkovať vstup s frekvenciou systémových hodín, pričom si bude pamätať logickú hodnotu signálu pri poslednom prečítaní. Vstupný signál musí byť synchronizovaný so systémovými hodinami. Pokiaľ je pri nasledujúcom čítaní hodnota signálu rôzna od naposledy zapamätanej, detegovali sme hranu, čo signalizujeme na výstup. Obvod umožňuje vybrať parametrom, či chceme chceme detegovať nábehovú alebo dobehovú hranu. Na obrázku \ref{obr:edgeDetectSim} ako príklad uvádzame priebeh signálov počas simulácie detekcie dobehovej hrany.
+Prvé primitívum, ktoré spomenieme je detektor hrán. Detekcia hrán je potrebná najmä pre rozpoznanie začiatku komunikácie, prípadne konkrétnej fázy v komunikačného protokolu, ktorá vždy začína zmenou signálu (hranou) na niektorej zo vstupných liniek v závislosti od zbernice. Ako mechanizmus detekcie hrán použijeme štandardný prístup. Obvod pre detekciu hrán bude vzorkovať vstup s frekvenciou systémových hodín (vstup \texttt{sys\_clk}), pričom si bude pamätať logickú hodnotu signálu pri poslednom prečítaní (\texttt{old\_sig}). Vstupný signál \texttt{sig} musí byť synchronizovaný so systémovými hodinami. Pokiaľ je pri nasledujúcom čítaní hodnota signálu rôzna od naposledy zapamätanej, detegovali sme hranu, čo signalizujeme na výstup \texttt{edge\_sig}. V úryvku \ref{snip:edgeDetect} je Verilog kód realizujúci detekciu hrán. Obvod umožňuje vybrať parametrom, či chceme chceme detegovať nábehovú alebo dobehovú hranu. Na obrázku \ref{obr:edgeDetectSim} ako príklad uvádzame priebeh signálov počas simulácie detekcie dobehovej hrany.
+
+\begin{lstlisting}[float,language=Verilog,caption={Verilog kód pre detekciu hrán. Parameter \texttt{FALL\_EDGE} určuje, či detegujeme dobehovú alebo nábehovú hranu.},label=snip:edgeDetect]
+// logika detekcie hrany
+assign edge_sig = (FALL_EDGE == 0) ?
+        (sig & (~old_sig)) : ((~sig) & old_sig);
+
+// vzorkovanie vstupného signálu
+always @ (posedge sys_clk)
+begin
+    old_sig <= sig;
+end
+\end{lstlisting}
 
 \begin{figure}
     \centerline{\includegraphics[width=1\textwidth]{images/simulations/edgeDetectSim.png}}
-    \caption[Simulácia detekcie dobehovej hrany]{Simulácia detekcie dobehovej hrany. Znázornené signály sú (zhora): systémové hodiny (sys\_clk), aktuálny signál na vstupe (sig), signál zapamätaný pri poslednom čítaní (old\_sig), výstupný signál detekcie (edge\_sig). Pri simulácii vstupy pre jednoduchosť testovania nie sú synchronizované so systémovými hodinami.}
+    \caption[Simulácia detekcie dobehovej hrany]{Simulácia detekcie dobehovej hrany.}
     \label{obr:edgeDetectSim}
 \end{figure}
 
 \subsection{Výstupný multiplexor}\label{subsek:multiplexor}
-Výstupný multiplexor bude veľmi jednoduchý kombinačný obvod, ktorý multiplexuje medzi dvomi sadami vstupov. Tie predstavujú skutočný signál prijatý na linkách zbernice a falošný signál vygenerovaný zbernicovou implementáciou z dát prichádzajúcich z MITM logiky. Tretím vstupom do multiplexora je selektor. Ten predstavuje bitovú masku určujúcu, ktoré linky majú byť nastavené vo falošnom režime. Výstupom je multiplexovaná linka v závislostí od nastaveného selektora. Šírka jednotlivých vstupov a výstupu je daná počtom liniek zbernice (parameter).
+Výstupný multiplexor bude veľmi jednoduchý kombinačný obvod, ktorý multiplexuje medzi dvomi sadami vstupov \texttt{in\_line0} a \texttt{in\_line1}. Tie predstavujú skutočný signál prijatý na linkách zbernice a falošný signál vygenerovaný zbernicovou implementáciou z dát prichádzajúcich z MITM logiky. Tretím vstupom do multiplexora je selektor (\texttt{select\_line}). Ten predstavuje bitovú masku určujúcu, ktoré linky majú byť nastavené vo falošnom režime. Výstupom \texttt{out\_line} je multiplexovaná linka v závislostí od nastaveného selektora. Šírka jednotlivých vstupov a výstupu je daná počtom liniek zbernice (parameter \texttt{WIDTH}). Logiku výstupného multiplexora možno v jazyku Verilog implementovať veľmi jednoducho, využitím disjunktívnej normálnej formy (pozri úryvok \ref{snip:multiplexor}).
+
+\begin{lstlisting}[float,language=Verilog,caption={Logika výstupného multiplexora v jazyku Verilog. Sémantika operátorov \& a | pre viacbitové signály zabezpečí paralelné spracovanie všetkých liniek.},label=snip:multiplexor]
+module OutputMux #(
+	// parametre modulu
+	parameter WIDTH = 4
+) (
+    // vstupy a výstupy
+    input wire [WIDTH-1:0] in_line0,
+    input wire [WIDTH-1:0] in_line1,
+    input wire [WIDTH-1:0] select_line,
+    output wire [WIDTH-1:0] out_line
+);
+// logika multiplexora
+assign out_line = (~select_line & in_line0) | (select_line & in_line1);
+endmodule
+\end{lstlisting}
 
 \subsection{Sériový buffer pre čítanie a zápis}
 Ďalšími dvoma stavebnými prvkami sú vyrovnávací obvod, ďalej len buffer, pre čítanie, resp. zápis. Cieľom je umožniť čítanie sériových dát na vstupných zbernicových linkách po väčších blokoch a rovnako sériové vysielanie dát na výstupných linkách, ktoré z vyššej vrstvy prichádzajú po blokoch. Užitočným parametrom (pre čítací aj zapisovací buffer) je možnosť nastaviť poradie, v ktorom sa čítajú/zapisujú. Poradie môže byť od najvýznamnejšieho bitu alebo od najmenej významného. Druhým parametrom je veľkosť buffra.
 
-Buffer pre čítanie má ako vstup sériovú linku (synchronizovanú so systémovými hodinami). Ďalej má vstup, ktorý riadi čítanie prostredníctvom jedno-taktových impulzov. Princíp fungovania je nasledovný: Štartovacím riadiacim vstupom sa spustí čítanie a buffer sa nastaví do režimu, kedy čaká na riadiace impulzy pre čítanie. Synchrónne s týmito impulzmi postupne číta logickú hodnotu signálu a ukladá do internej pamäte. Po prečítaní poslednej hodnoty (počet určuje parameter veľkosti buffra) sa čítanie skončí a buffer signalizuje, že prečítané dáta (výstup) sú platné a vyššia vrstva ich môže prevziať.
+Buffer pre čítanie má ako vstup sériovú linku \texttt{in\_line} (synchronizovanú so systémovými hodinami). Ďalej má vstup \texttt{read\_sig}, ktorý riadi čítanie prostredníctvom jedno-taktových impulzov. Princíp fungovania je nasledovný: Štartovacím riadiacim vstupom \texttt{start} sa spustí čítanie a buffer sa nastaví do režimu, kedy čaká na riadiace impulzy pre čítanie. Synchrónne s týmito impulzmi postupne číta logickú hodnotu signálu a ukladá do internej pamäte. Po prečítaní poslednej hodnoty (počet určuje parameter veľkosti buffra) sa čítanie skončí a buffer výstupom \texttt{done\_sig} signalizuje, že prečítané dáta na výstupe \texttt{data\_out} sú platné a vyššia vrstva ich môže prevziať. V úryvku \ref{snip:readBuffer} je ukážka Verilog kódu, ktorý implementuje opísanú logiku čítacieho buffera.
 
-Buffer pre zápis funguje analogicky. Vstupom je tento krát blok dát, ktorý chceme sériovo odvysielať na výstupnej linke. Rovnako má vstup pre riadenie zápisu prostredníctvom impulzov ako v prípade čítacieho buffra. Princíp fungovania je podobný ako v predchádzajúcom prípade s drobným rozdielom. Cieľom je tento krát podržať logickú hodnotu signálu na výstupnej linke dostatočne dlho (záleží od zbernice), aby ju druhá strana mohla prijať. Prvý bit sa preto na výstup zapíše spolu so spustením zápisu (riadené štartovacím vstupom). Ďalej s každým riadiacim impulzom pre zápis sa výstupná hodnota signálu zmení na nasledovný bit, ktorý chceme odvysielať. Po poslednom zápise buffer podrží hodnotu signálu na výstupe a čaká na posledný zápisový impulz, po ktorom zápis končí. Keďže prvý bit bol zapísaný súčasne so spustením zápisu celý proces bude mať rovnako zápisových impulzov ako je čítacích impulzov v prípade čítacieho buffra. Priebeh signálov počas simulácie činnosti buffrov je znázornený na obrázku \ref{obr:bufferSim}.
+\begin{lstlisting}[float,language=Verilog,caption={Verilog kód pre čítací buffer.},label=snip:readBuffer]
+// v stave IDLE čakáme na štart
+STATE_IDLE: begin
+    if (start == 1'b1) begin
+        done_sig <= 1'b0;
+        data_out <= 0;
+        ctr <= read_count;
+        state <= STATE_READ;
+    end
+end
+				
+// čítanie synchronizované signálom read_sig
+STATE_READ: begin
+    // ak sme všetko prečítali, vrátime sa do stavu IDLE
+    if (ctr == 0) begin
+        done_sig <= 1'b1;
+        state <= STATE_IDLE;
+    end
+    // synchrónne s riadiacim signálom čítame dáta
+    else if (read_sig == 1'b1) begin
+        data_out <= (LSB_FIRST == 0) ?
+            {data_out[BUF_SIZE-2:0], in_line} : // ľavý shift
+            {in_line, data_out[BUF_SIZE-1:1]};  // pravý shift
+        ctr <= ctr - 1;
+    end
+end
+\end{lstlisting}
+
+Buffer pre zápis funguje analogicky. Vstupom \texttt{data\_in} je tento krát blok dát, ktorý chceme sériovo odvysielať na výstupnej linke \texttt{out\_line}. Rovnako má vstup \texttt{write\_sig} pre riadenie zápisu prostredníctvom impulzov ako v prípade čítacieho buffra. Princíp fungovania je podobný ako v predchádzajúcom prípade s drobným rozdielom. Cieľom je tento krát podržať logickú hodnotu signálu na výstupnej linke dostatočne dlho (záleží od zbernice), aby ju druhá strana mohla prijať. Prvý bit sa preto na výstup zapíše spolu so spustením zápisu (riadené štartovacím vstupom). Ďalej s každým riadiacim impulzom pre zápis sa výstupná hodnota signálu zmení na nasledovný bit, ktorý chceme odvysielať. Po poslednom zápise buffer podrží hodnotu signálu na výstupe a čaká na posledný zápisový impulz, po ktorom zápis končí. Keďže prvý bit bol zapísaný súčasne so spustením zápisu celý proces bude mať rovnako zápisových impulzov ako je čítacích impulzov v prípade čítacieho buffra. Priebeh signálov počas simulácie činnosti buffrov je znázornený na obrázku \ref{obr:bufferSim}.
 
 \begin{figure}
     \centering
-    \subfloat[Buffer pre čítanie. Signály sú (zhora): systémové hodiny (sys\_clk), štartovací signál (start), riadiace impulzy pre čítanie (read\_sig), vstupný sériový signál (in\_line), dáta prečítané v buffri (data\_out), výstupný signál \uv{prečítané dáta sú platné} (done\_sig).]{\includegraphics[width=1\textwidth]{images/simulations/readBufferSim.png}}
+    \subfloat[Buffer pre čítanie.]{\includegraphics[width=1\textwidth]{images/simulations/readBufferSim.png}}
     \vfill
-    \subfloat[Buffer pre zápis. Signály sú (zhora): systémové hodiny (sys\_clk), vstupné dáta pre zápis (data\_in), štartovací signál (start), riadiace impulzy pre zápis (write\_sig), výstupný sériový signál (out\_line), dáta v internom registri, ktoré ešte treba zapísať (write\_buf), výstupný signál \uv{dáta úspešne zapísané}, resp. \uv{buffer pripravený pre zápis} (done\_sig).]{\includegraphics[width=1\textwidth]{images/simulations/writeBufferSim.png}}
+    \subfloat[Buffer pre zápis.]{\includegraphics[width=1\textwidth]{images/simulations/writeBufferSim.png}}
     \caption[Simulácia buffrov pre čítanie a zápis]{Simulácia buffrov pre čítanie a zápis. Na vrchnom obrázku je znázornený priebeh signálov pri čítaní, na spodnom priebeh pri zápise/vysielaní. V obidvoch príkladov sú dáta vysielané od najvýznamnejšieho bitu.}
     \label{obr:bufferSim}
 \end{figure}
@@ -172,18 +228,45 @@ Synchronizáciu implementujeme v špeciálnom obvode -- synchronizátor. Synchro
 V našom prípade záleží od zbernice. V prípade sériovej zbernice to nie je problém, nakoľko dáta prenášané na linkách sú navzájom od seba nezávislé. V prípade paralelných zberníc zvykne byť guard sémantika riešená na úrovni zbernicového protokolu. Zbernica môže priamo obsahovať riadiacu guard linku, prípadne môže guard sémantika implicitne vyplývať z kontextu protokolu.
 
 \subsection{Modul signal debouncer} \label{subsek:debouncer}
-Ďalším problémom je spracovanie vstupov z externých tlačidiel. Tlačidlo pri stlačení/uvoľnení zvyčajne generuje \uv{skákavý} signál, meniaci logický stav medzi 0 a 1. Ten môže spôsobiť, že jedno stlačenie/uvoľnenie detegujeme viackrát. Odstránenie takýchto zákmitov signálu je na FPGA pomerne jednoduché. Aj krátke stlačenie tlačidla predstavuje pomerne veľký časový interval z pohľadu rýchlosti FPGA, rádovo minimálne desiatky milisekúnd. Na vstupnom signále budeme preto počítať čas od poslednej hrany (v počte taktov systémových hodín). Pokiaľ tento čas bude dostatočne dlhý (určené parametrom \texttt{DEBOUNCE\_LEN}), signál na vstupe je stabilný, teda jeho hodnotu považujeme za platnú a môžeme ju spracovať. Pokiaľ je takto stabilný signál v aktívnom stave (logická 0 alebo 1 v závislosti od nastavenia parametra), pošleme na výstup signál, že sme detegovali stlačenie tlačidla. Odstránenie zákmitov signálu implementujeme v samostatnom module signal debouncer. Simulácia signálov počas spracovania stlačenia tlačidla je na obrázku \ref{obr:debouncerSim}. Vstup z tlačidla je potrebné pred odstránením zákmitov, rovnako ako ostatné vstupy, synchronizovať.
+Ďalším problémom je spracovanie vstupov z externých tlačidiel. Tlačidlo pri stlačení/uvoľnení zvyčajne generuje \uv{skákavý} signál, meniaci logický stav medzi 0 a 1. Ten môže spôsobiť, že jedno stlačenie/uvoľnenie detegujeme viackrát. Odstránenie takýchto zákmitov signálu je na FPGA pomerne jednoduché. Aj krátke stlačenie tlačidla predstavuje pomerne veľký časový interval z pohľadu rýchlosti FPGA, rádovo minimálne desiatky milisekúnd. Na vstupnom signále budeme preto počítať čas od poslednej hrany (v počte taktov systémových hodín). Pokiaľ tento čas bude dostatočne dlhý (určené parametrom \texttt{DEBOUNCE\_LEN}), signál na vstupe je stabilný, teda jeho hodnotu považujeme za platnú a môžeme ju spracovať. Pokiaľ je takto stabilný signál v aktívnom stave (logická 0 alebo 1 v závislosti od nastavenia parametra), pošleme na výstup signál, že sme detegovali stlačenie tlačidla. Odstránenie zákmitov signálu implementujeme v samostatnom module signal debouncer. V úryvku \ref{snip:debouncer} je zjednodušený kód odstraňujúci zákmity vstupného signálu. Simulácia signálov počas spracovania stlačenia tlačidla je na obrázku \ref{obr:debouncerSim}. Vstup z tlačidla je potrebné pred odstránením zákmitov, rovnako ako ostatné vstupy, synchronizovať.
+
+\begin{lstlisting}[float,language=Verilog,caption={Zjednodušený kód pre odstránenie zákmitov signálu \texttt{in\_sig}. V príklade je polarita vstupu invertovaná (tzv. active-low).},label=snip:debouncer]
+always @ (posedge sys_clk)
+begin
+    // vzorkujeme vstup a zapamätáme si hodnotu signálu
+	old_sig <= in_sig;
+		
+    // ak detegujeme hranu, resetujeme počítadlo
+    if (old_sig ^ in_sig == 1'b1) begin
+        out_sig <= 1'b0;
+        ctr <= 0;
+    end
+    // ak počítadlo dosiahlo prahovú hodnotu,
+    // signál na vstupe je aktívny, pričom naposledy bol neaktívny,
+    // pošleme na výstup logickú 1 (polarita vstupu je active-low)
+    else if (ctr == CTR_MAX) begin
+        out_sig <= ~last_active & ~in_sig;
+        last_active <= ~in_sig;
+        ctr <= 0;
+    end
+    // inak pošleme na výstup 0 a inkrementujeme počítadlo
+    else begin
+        out_sig <= 1'b0;
+        ctr <= ctr + 1;
+	end
+end
+\end{lstlisting}
 
 \begin{figure}
     \centerline{\includegraphics[width=1\textwidth]{images/simulations/debouncerSim.png}}
-    \caption[Simulácia spracovania vstupu z tlačidla]{Simulácia spracovania vstupu z tlačidla. Signály sú (zhora): systémové hodiny (sys\_clk), vstupný signál z tlačidla (in\_sig), výstupný signál stlačenia (out\_sig). Kvôli kratšej simulácii trvá simulované stlačenie len niekoľko mikrosekúnd, v skutočnosti je rádovo dlhšie (minimálne desiatky milisekúnd).}
+    \caption[Simulácia spracovania vstupu z tlačidla]{Simulácia spracovania vstupu z tlačidla. Kvôli kratšej simulácii trvá simulované stlačenie len niekoľko mikrosekúnd, v skutočnosti je rádovo dlhšie (minimálne desiatky milisekúnd).}
     \label{obr:debouncerSim}
 \end{figure}
 
 \subsection{I/O handler}
 Posledný modul v rámci vstupu a výstupu je I/O handler. Úlohou tohoto obvodu je spracovať vstupy od tlačidiel a rovnako generovať výstupné signály pripojené k LED diódam. Na synchronizáciu a odstránenie zákmitov signálov interne využijeme moduly syncrhonizátor a signal debouncer.  Na vstupe sme implementovali podporu pre dve tlačidlá. Prvým je globálny reset, ktorý sa po prijatí a detegovaní stlačenia v I/O handleri propaguje do všetkých ostatných obvodov, pri ktorých je reset zmysluplný. Jednoduché obvody ako napríklad synchronizátor a detektor hrán nepotrebujú byť inicializované v dobre definovanom stave a preto u nich nie je reset vstup potrebný.
 
-Druhým tlačidlom je mód select, ktorým je možné poslať vstup pre MITM logiku. Tento vstup umožňuje dynamické prepínanie medzi rôznymi režimami MITM logiky. Aktuálne nastavený režim si I/O handler udržuje v internom registri, ktorý je pripojený na vstup MITM logiky. V implementácii MITM logiky je prípadne možné využiť tento vstup aj na iné účely podľa potreby. Hodnota aktuálne nastaveného režimu je zároveň posielaná na výstupné LED diódy, ktoré signalizujú túto hodnotu používateľovi.
+Druhým tlačidlom je mode select, ktorým je možné poslať vstup pre MITM logiku. Tento vstup umožňuje dynamické prepínanie medzi rôznymi režimami MITM logiky. Aktuálne nastavený režim si I/O handler udržuje v internom registri, ktorý je pripojený na vstup MITM logiky. V implementácii MITM logiky je prípadne možné využiť tento vstup aj na iné účely podľa potreby. Hodnota aktuálne nastaveného režimu je zároveň posielaná na výstupné LED diódy, ktoré signalizujú túto hodnotu používateľovi.
 
 Posledná funkcia I/O handler modulu je signalizácia aktuálne prebiehajúcej komunikácie prostredníctvom LED diódy. V závislosti od zbernice sa logika detekcie signálu môže líšiť, preto je táto logika ponechaná na implementáciu zbernice a výstup detekcie je pripojený na vstup pre I/O handler, ktorý ho ďalej spracuje a výsledný signál pošle na výstupnú LED. Schéma pripojenia vstupov a výstupov k modulu I/O handler je na obrázku \ref{obr:ioHandler}.
 
