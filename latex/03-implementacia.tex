@@ -101,7 +101,7 @@ Posledný mechanizmus, ktorý naše rozhranie umožňuje je tzv. keep-alive rež
 
 Na slave strane je naopak potrebné zabezpečiť, aby sa falošné dáta odvysielali v správnom okamihu (komunikáciu riadi master). Pre tento účel využijeme binárny statusový výstup (\texttt{fake\_ifX\_send\_ready}), ktorý indikuje, či je rozhranie na danej strane pripravené vysielať dáta. Implementácia zbernice môže týmto výstupom signalizovať, že zbernica nie je pripravená odvysielať ďalšie dáta, napríklad z dôvodu, že aktuálne práve vysiela predošlé dáta. Na slave strane bude implementácia zároveň signalizovať, že nie je pripravená odvysielať dáta aj v prípade, že to momentálne konkrétny master-slave protokol neumožňuje napriek tomu, že slave strana aktuálne nie je činná.
 
-\section{Primitíva}
+\section{Primitíva} \label{sek:primitives}
 Pre implementáciu jednotlivých častí obvodu je užitočné postaviť základné primitíva, parametrizovateľné obvody realizujúce jednoduché funkcie. Tento prístup umožní prehľadnejšiu štruktúru kódu a jednoduchšie testovanie a overovanie funkčnosti jednotlivých modulov. V tejto časti stručne opíšeme jednotlivé primitívne obvody, z ktorých budú poskladané zložitejšie moduly. Pre vybrané primitíva uvedieme aj ukážky implementácie v jazyku Verilog. Kompletný zdrojový kód všetkých modulov sa nachádza v elektronickej prílohe priloženej k práci.
 
 \subsection{Detektor hrán} \label{subsek:edgeDetector}
@@ -200,7 +200,7 @@ Posledným primitívom, ktoré využijeme je generátor impulzov. Generátor imp
     \label{obr:pulseGen}
 \end{figure}
 
-\section{Vstup a výstup}
+\section{Vstup a výstup} \label{sek:io}
 V tejto časti rozoberieme spôsob spracovania vstupu a výstupu v našej implementácii. Najskôr spomenieme dve techniky -- synchronizáciu a odstraňovanie zákmitov signálu (angl. signal debouncing), ktoré sme použili pri spracovaní vstupov. Každá z týchto funkcionalít je implementovaná v samostatnom module a popíšeme ich v častiach \ref{subsek:synchronizer} a \ref{subsek:debouncer}. Takto predspracované vstupy sú následne použité aj v module I/O handler, ktorý spracováva vstup z tlačidiel a generuje výstupné signály pre LED diódy.
 
 \subsection{Synchronizátor} \label{subsek:synchronizer}
@@ -298,7 +298,7 @@ Druhým modulom implementácie UART zbernice je UART controller. Jeho úlohou je
     \label{obr:uartController}
 \end{figure}
 
-\subsection{SPI implementácia}
+\subsection{SPI implementácia} \label{sek:spiImplementation}
 SPI zbernica je značne komplikovanejšia v porovnaní s UART zbernicou. Najväčšie komplikácie spôsobuje asymetrickosť master-slave architektúry a jej dôsledky, ktoré sme spomenuli v časti \ref{sek:masterSlave}. Napriek tomu sa nám SPI zbernicu pre MITM útoky podarilo implementovať s tým, že niektoré aspekty tejto architektúry sa presúvajú na vyššiu vrstvu a musí s nimi MITM logika počítať. Podobne ako pri implementácii UART zbernice máme dva základné moduly.
 
 SPI driver je tento krát rozdelený na dva samostatné moduly, jeden implementujúci rozhranie pre slave stranu (sme pripojený k mastrovi) a jeden pre master stranu (pripojený k skutočnému slave zariadeniu). Myšlienka implementácie týchto modulov nie je zložitá, ale realizáciu komplikuje množstvo technických detailov. Preto ju nebudeme detailne opisovať a spomenieme len dve zaujímavé myšlienky. Pre podrobnosti implementácie čitateľa odkazujeme na okomentovaný zdrojový kód, ktorý sa nachádza v elektronickej prílohe priloženej k práci.
@@ -325,7 +325,7 @@ Preto sme navrhli nasledovné riešenie: Na vysielanie MOSI dát, ktoré sú vo 
     \label{obr:spiController}
 \end{figure}
 
-\section{Konfigurácia a syntéza FPGA obvodu}
+\section{Konfigurácia a syntéza FPGA obvodu} \label{sek:config}
 V tejto časti opíšeme spôsob konfigurácie a syntézu pomocou automatizovaného skriptu, ktorý vytvorí finálnu konfiguráciu v binárnom formáte. Tú možno priamo nahrať na zvolenú FPGA dosku. Ako prvé je vhodné nakonfigurovať parametre MITM obvodu v dedikovanom súbore \texttt{config.vh}, ktorý je pripojený v zdrojovom kóde k relevantným modulom. Zoznam konfigurovateľných parametrov je v tabuľke \ref{tab:config}. Niektoré parametre sú špecifické pre konkrétnu zbernicu, preto sú aplikovateľné len v prípade, že je táto zbernica použitá.
 
 \begin{table}
