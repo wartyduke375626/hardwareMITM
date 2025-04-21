@@ -82,20 +82,6 @@ $(SIM_DIR)/UartTopLevelModule_test.vcd: $(VVP_DIR)/UartTopLevelModule_test.vvp |
 	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
 
 
-# Proprietary EEPROM:
-$(SIM_DIR)/proprietary_eeprom/BusControl_test.vcd: $(VVP_DIR)/BusControl_test.vvp | $(SIM_DIR)
-	vvp $<
-	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
-
-$(SIM_DIR)/proprietary_eeprom/MitmLogic_test.vcd: $(VVP_DIR)/MitmLogic_test.vvp | $(SIM_DIR)
-	vvp $<
-	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
-
-$(SIM_DIR)/proprietary_eeprom/TopLevelModule_test.vcd: $(VVP_DIR)/TopLevelModule_test.vvp | $(SIM_DIR)
-	vvp $<
-	mkdir -p $$(dirname $@) && mv $$(basename $@) $@
-
-
 
 # IVerilog build rules
 
@@ -171,18 +157,4 @@ $(VVP_DIR)/TpmGetRandomTopLevelModule_test.vvp: $(TEST_DIR)/TpmGetRandomTopLevel
 
 $(VVP_DIR)/UartTopLevelModule_test.vvp: $(TEST_DIR)/UartTopLevelModule_test.v $(SRC_DIR)/TopLevelModule.v $(SRC_DIR)/MitmLogic.v \
 		$(SRC_DIR)/buses/BusInterface.v $(SRC_DIR)/buses/uart/*.v $(SRC_DIR)/io/*.v $(SRC_DIR)/primitives/*.v | $(VVP_DIR)
-	iverilog $(IV_FLAGS) $^ -o $@
-
-
-# Proprietary EEPROM:
-$(VVP_DIR)/BusControl_test.vvp: $(TEST_DIR)/proprietary_eeprom/BusControl_test.v $(SRC_DIR)/proprietary_eeprom/BusControl.v \
-		$(SRC_DIR)/primitives/EdgeDetector.v $(SRC_DIR)/primitives/OutputMux.v \
-		$(SRC_DIR)/primitives/SerialReadBuffer.v $(SRC_DIR)/primitives/SerialWriteBuffer.v | $(VVP_DIR)
-	iverilog $(IV_FLAGS) $^ -o $@
-
-$(VVP_DIR)/MitmLogic_test.vvp: $(TEST_DIR)/proprietary_eeprom/MitmLogic_test.v $(SRC_DIR)/proprietary_eeprom/MitmLogic.v | $(VVP_DIR)
-	iverilog $(IV_FLAGS) $^ -o $@
-
-$(VVP_DIR)/TopLevelModule_test.vvp: $(TEST_DIR)/proprietary_eeprom/TopLevelModule_test.v $(SRC_DIR)/proprietary_eeprom/TopLevelModule.v \
-		$(SRC_DIR)/proprietary_eeprom/BusControl.v $(SRC_DIR)/proprietary_eeprom/MitmLogic.v $(SRC_DIR)/io/*.v $(SRC_DIR)/primitives/*.v | $(VVP_DIR)
 	iverilog $(IV_FLAGS) $^ -o $@

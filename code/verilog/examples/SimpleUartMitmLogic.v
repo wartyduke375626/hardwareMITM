@@ -1,7 +1,13 @@
 /**
- * Main MITM logic module:
+ * MITM logic module example:
+ * - this is a simple MITM logic example attacking UART communication
  * - utilizes the Bus interface module to intercept and modify communication
  * - an additional mode selecting input is used to switch dynamically between different MITM modes
+ * - it has 4 modes of operation:
+ *     - MODE_FORWARD: no MITM interference with communication
+ *     - MODE_SUB0_BLOCK1: IF1->IF0 sub every byte with 0x23 (ASCI '#'), block IF0->IF1
+ *     - MODE_SUB1_BLOCK0: IF0->IF1 sub every byte with 0x24 (ASCI '$'), block IF1->IF0
+ *     - MODE_ROT_13: for both directions perform ROT13 operation on [a-zA-Z], other characters remain unchanged
 **/
 
 module MitmLogic #(

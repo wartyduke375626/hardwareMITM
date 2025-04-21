@@ -1,9 +1,10 @@
 /**
- * Parameter configuration
+ * Parameter configuration:
+ * - edit this file to change MITM FPGA configuration
 **/
 
 // system clock parameters
-// set these according to the icepll tool to get the desired frequency
+// if the desired frequency is too high (depending logic design complexity), nextpnr migth fail to suffice timing constraints (build might fail)
 `define SYS_FREQ 60	// system frequency in MHz (suppoted range 16 -- 275)
 
 // io parameters
@@ -17,7 +18,7 @@
 
 // bus specific parameters
 
-// UART:
+// UART
 `define	UART_BAUD_RATE 115_200
 
 // SPI
