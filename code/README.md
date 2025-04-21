@@ -1,4 +1,4 @@
-# Verilog directory
+# Source code directory
 
 This directory contains all source code and related files for this project.
 

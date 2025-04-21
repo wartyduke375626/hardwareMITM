@@ -1,4 +1,4 @@
-# Verilog directory
+# Arduino directory
 
 This directory contains arduino code for demo programs used to physically test the MITM attacks.
 
