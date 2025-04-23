@@ -157,7 +157,9 @@ Fakulta matematiky, fyziky a informatiky
 ~
 
 \vfill
-{\bf Poďakovanie:} <TO DO> Text poďakovania.
+{\bf Poďakovanie:} Ďakujem vedúcemu bakalárskej práce RNDr. Richardovi Ostertágovi, PhD. za odborné vedenie, metodickú pomoc, podnetné nápady, pripomienky a~konzultácie pri písaní práce.\\
+
+Táto práca vznikla aj vďaka podpore v rámci Operačného programu Integrovaná infraštruktúra pre projekt: Advancing University Capacity and Competence in Research, Development and Innovation (ACCORD), spolufinancovaný zo zdrojov Európskeho fondu regionálneho rozvoja.
 % --- Koniec poďakovania
 
 
@@ -167,9 +169,9 @@ Fakulta matematiky, fyziky a informatiky
 \newpage 
 \section*{Abstrakt}
 
-<TO DO> Abstrakt v slovenskom jazyku.
+Mnohé dnešné hardvérové zariadenia pozostávajú z viacerých integrovaných obvodov, ktoré sú navzájom prepojené komunikačnými zbernicami. zaujímavé aktívne zasahovanie do takejto komunikácie, napríklad za účelom modifikácie údajov alebo získania kľúčov. V práci sme implementovali hardvérový \uv{Man-in-the-middle} (MITM) pre zbernice UART a SPI pomocou FPGA, čo umožňuje do komunikácie zasahovať v reálnom čase. Návrh oddeľuje zbernicové rozhranie od MITM logiky, čo zjednodušuje prispôsobenie útoku na iné zbernice. Implementácia modulárna a rozšíriteľná, s opakovane použiteľnými primitívmi (napr. detektor hrán signálu, buffer, čítač a pod.). V rámci zbernicového rozhrania sú pre UART a SPI zbernice vytvorené špecifické ovládače, ktoré zohľadňujú ich odlišné vlastnosti (asynchrónnosť UART a synchrónnosť SPI). Zároveň poukazujeme na principiálne neabstrahovateľné vlastnosti zbernice ako napríklad master-slave architektúra. Tá prináša obmedzenia, ktoré môžu závisieť od obsahu prenášaných dát. Pri implementácii sme dbali aj na štandardné problémy pri návrhu FPGA obvodov ako napríklad synchronizácia vstupov a odstránenie zákmitov signálu (angl. signal debouncing). Konfigurácia obvodu je prispôsobiteľná cez parametre (napr. frekvencia systémových hodín) a syntéza je automatizovaná skriptom. Práca demonštruje výhody FPGA oproti softvérovým riešeniam, ako je rýchlosť a kontrola na úrovni logických hradiel, a ponúka rozšíriteľný základ pre ďalšie zbernicové protokoly. Použiteľnosť riešenia na záver demonštrujeme na dvoch konkrétnych príkladoch útokov.
 
-\paragraph*{Kľúčové slová:} <TO DO>
+\paragraph*{Kľúčové slová:} MITM útok, zbernica, FPGA
 % --- Koniec Abstrakt - Slovensky
 
 
