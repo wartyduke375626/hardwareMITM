@@ -1,4 +1,4 @@
-# Arduino directory
+# Arduino Directory
 
 This directory contains arduino code for demo programs used to physically test the MITM attacks.
 
