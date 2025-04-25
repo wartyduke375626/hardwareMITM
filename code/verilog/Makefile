@@ -10,6 +10,7 @@ TEST_DIR=tests
 BUILD_DIR=build
 VVP_DIR=$(BUILD_DIR)/vvp
 SIM_DIR=$(BUILD_DIR)/simulations
+MODULE_DIR=$(BUILD_DIR)/modules
 SYNTH_DIR=$(BUILD_DIR)/synthesis
 PCF_DIR=$(BUILD_DIR)/pcf
 PNR_DIR=$(BUILD_DIR)/nextpnr
@@ -22,6 +23,7 @@ default: sim bin
 
 include icestick.mk
 include ice40hx8k.mk
+include common.mk
 include test.mk
 
 
@@ -56,36 +58,36 @@ sim: \
 		$(SIM_DIR)/buses/uart/UartDriver_test.vcd \
 		$(SIM_DIR)/SpiTopLevelModule_test.vcd \
 		$(SIM_DIR)/TpmGetRandomTopLevelModule_test.vcd \
-		$(SIM_DIR)/UartTopLevelModule_test.vcd \
-		$(SIM_DIR)/proprietary_eeprom/MitmLogic_test.vcd \
-		$(SIM_DIR)/proprietary_eeprom/BusControl_test.vcd \
-		$(SIM_DIR)/proprietary_eeprom/TopLevelModule_test.vcd;
+		$(SIM_DIR)/UartTopLevelModule_test.vcd;
 
 
 # Create directories
 $(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+	mkdir -p $@
 
 $(VVP_DIR):
-	mkdir -p $(VVP_DIR)
+	mkdir -p $@
 
 $(SIM_DIR):
-	mkdir -p $(SIM_DIR)
+	mkdir -p $@
+
+$(MODULE_DIR):
+	mkdir -p $@
 
 $(SYNTH_DIR):
-	mkdir -p $(SYNTH_DIR)
+	mkdir -p $@
 
 $(PCF_DIR):
-	mkdir -p $(PCF_DIR)
+	mkdir -p $@
 
 $(PNR_DIR):
-	mkdir -p $(PNR_DIR)
+	mkdir -p $@
 
 $(RPT_DIR):
-	mkdir -p $(RPT_DIR)
+	mkdir -p $@
 
 $(BIN_DIR):
-	mkdir -p $(BIN_DIR)
+	mkdir -p $@
 
 
 # Clean rule

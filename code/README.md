@@ -2,7 +2,7 @@
 
 This directory contains all source code and related files for this project.
 
-## Directory Structure:
+## Directory structure:
 
 * **arduino/** - Arduino IDE code for demo programs used to physically test the MITM attacks.
 

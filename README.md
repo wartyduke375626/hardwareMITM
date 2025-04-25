@@ -1,4 +1,4 @@
-# Hardware MITM attacks on bus communication using FPGA
+# Hardware MITM Attacks on Bus Communication Using FPGA
 
 This repository contains source files related to master's thesis _Hardware MITM attacks on bus communication using FPGA_.
 
