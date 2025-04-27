@@ -26,6 +26,10 @@ In order to use the automated build script, the following dependencies are requi
 
 Additionally, a tool like **GTKWave** can be used to graphically display simulated vcd files (https://github.com/gtkwave/gtkwave).
 
+On Linux you can install the following packages (e.g. using _apt_):
+
+`apt install yosys nextpnr-ice40 fpga-icestorm iverilog gtkwave`
+
 ## How to build the FPGA MITM logic:
 
 **Disclaimer:** _This project is an early proof of concept. Some parts of the automated build may not be well-tuned or optimally implemented. The sole purpose of this project is to demonstrate feasibility, not to serve as a production-ready solution._
