@@ -42,6 +42,6 @@ On Linux you can install the following packages (e.g. using _apt_):
 
 4. Optionally, you can implement a test bench for your MITM logic in **tests/**, create a build rule for it in **test.mk** and add the target to the `make sim` prerequisites in **Makefile**. Your test can then be run with all other tests with `make sim`, vcd files are generated in **build/simulations/**.
 
-5. To build the final FPGA bitstream. Run `make <board>-<bus>` (e.g. `make icestick-uart` or `make ice40hx8k-spi`). The script will generate the final bitstream in **build/bin/**.
+5. To build the final FPGA bitstream, run `make <board>-<bus>` (e.g. `make icestick-uart` or `make ice40hx8k-spi`). The script will generate the final bitstream in **build/bin/**.
 
 6. Finally, you can upload the bitstream to the FPGA board using **iceprog** (e.g. `iceprog build/bin/icestick-uart.bin`). On Linux, it should work straightforwardly. On Windows, for **iceprog** to work you need to install the **libusbK** driver on both the USB serial interfaces of the FPGA board, e.g. using **Zadig** (https://github.com/pbatard/libwdi/wiki/Zadig).
