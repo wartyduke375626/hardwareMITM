@@ -45,3 +45,7 @@ On Linux you can install the following packages (e.g. using _apt_):
 5. To build the final FPGA bitstream, run `make <board>-<bus>` (e.g. `make icestick-uart` or `make ice40hx8k-spi`). The script will generate the final bitstream in **build/bin/**.
 
 6. Finally, you can upload the bitstream to the FPGA board using **iceprog** (e.g. `iceprog build/bin/icestick-uart.bin`). On Linux, it should work straightforwardly. On Windows, for **iceprog** to work you need to install the **libusbK** driver on both the USB serial interfaces of the FPGA board, e.g. using **Zadig** (https://github.com/pbatard/libwdi/wiki/Zadig).
+
+## Known problems:
+
+* On Ubuntu 22.04.5 releases, _fpga-icestorm_ package provided via apt, the **icetime** utility does not correctly parse the generated PCF files. (error: _icetime: icetime.cc:232: void read_pcf(const char*): Assertion `args.size() == 2' failed_). As this utility is only used to verify timing constraints it is not required to properly compile the code. As a quick workaround, comment out the lines involving 'icetime' from icestick.mk and ice40hx8k.mk (e.g. #icetime $(COMMON_ICETIME_FLAGS) $(ICESTICK_ICETIME_FLAGS) -p $$(echo $^ | cut -d ' ' -f 2) -r $@ $<).
